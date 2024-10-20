@@ -147,12 +147,12 @@ class EoETrainer(BaseTrainer):
 
             train_data = data.filter(cur_labels, "train")
             train_dataset = BaseDataset(train_data)
-            # num_train_labels = len(cur_labels)
-            # aug_train_data, num_train_labels = relation_data_augmentation(
-            #     copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
-            # )
+            num_train_labels = len(cur_labels)
+            aug_train_data, num_train_labels = relation_data_augmentation(
+                copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
+            )
             # aug_train_dataset = BaseDataset(aug_train_data)
-            # model.new_task(num_train_labels)
+            model.new_task(num_train_labels)
 
             # if self.task_idx == 0:
             #     z = f"./ckpt/{self.args.dataset_name}_{seed}_{self.args.augment_type}.pth"
@@ -166,10 +166,10 @@ class EoETrainer(BaseTrainer):
             #     )
 
             # os.makedirs(f"./ckpt/{self.args.dataset_name}-{seed}-{self.args.augment_type}", exist_ok=True)
-            model.save_classifier(
-                idx=self.task_idx,
-                save_dir=f"./ckpt/{self.args.dataset_name}-{seed}-{self.args.augment_type}",
-            )
+            # model.save_classifier(
+            #     idx=self.task_idx,
+            #     save_dir=f"./ckpt/{self.args.dataset_name}-{seed}-{self.args.augment_type}",
+            # )
             
             model.load_classifier(
                 idx=self.task_idx,
