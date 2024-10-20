@@ -253,6 +253,7 @@ class EoE(nn.Module):
                 expert_task_preds=all_score_over_task,
                 expert_class_preds=all_score_over_class,
             )
+            
         # only for training
         hidden_states = self.feature_extractor(
             input_ids=input_ids,
