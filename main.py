@@ -76,6 +76,7 @@ def main(cfg: DictConfig):
 
         label_list = data.label_list
         task_seq = list(range(len(label_list)))
+        
         if len(task_seq) != args.num_tasks * args.class_per_task:
             task_seq.extend([-1] * (args.num_tasks * args.class_per_task - len(task_seq)))
             random.shuffle(task_seq)
@@ -108,6 +109,8 @@ def main(cfg: DictConfig):
             seed=exp_seed
         )
         exp_results.append(exp_result)
+        
+        
     # calculate the average results
     for k in exp_results[0].keys():
         avg_exp_results = [0] * args.num_tasks

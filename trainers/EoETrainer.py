@@ -14,7 +14,7 @@ from transformers import set_seed
 
 from data import BaseDataset
 from trainers import BaseTrainer
-from utils import CustomCollatorWithPadding, relation_data_augmentation
+from utils import CustomCollatorWithPadding, relation_data_augmentation, convert_to_contrastivbbe_learning_dataset, relation_data_augmentation_and_contrastive_learning
 
 logger = logging.getLogger(__name__)
 
@@ -47,16 +47,23 @@ class EoETrainer(BaseTrainer):
             logger.info(f"Current classes: {' '.join(cur_labels)}")
 
             train_data = data.filter(cur_labels, "train")
-            train_dataset = BaseDataset(train_data)
+            train_dataset = BaseDataset(train_data)            
             num_train_labels = len(cur_labels)
-            aug_train_data, num_train_labels = relation_data_augmentation(
-                copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
-            )
+            if self.args.contrastive_learning:
+               train_dataset = convert_to_contrastivbbe_learning_dataset(train_dataset)
+               aug_train_data, num_train_labels = relation_data_augmentation_and_contrastive_learning(
+                    copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
+                )
+            else:
+                aug_train_data, num_train_labels = relation_data_augmentation(
+                    copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
+                )
+                
             aug_train_dataset = BaseDataset(aug_train_data)
             model.new_task(num_train_labels)
 
             if self.task_idx == 0:
-                z = f"./ckpt/{self.args.dataset_name}_{seed}_{self.args.augment_type}.pth"
+                expert_model = f"./ckpt/{self.args.dataset_name}_{seed}_{self.args.augment_type}.pth"
                 model.load_expert_model(expert_model)
                 logger.info(f"load first task model from {expert_model}")
             else:
