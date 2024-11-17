@@ -47,7 +47,14 @@ class EoETrainer(BaseTrainer):
             logger.info(f"Current classes: {' '.join(cur_labels)}")
 
             train_data = data.filter(cur_labels, "train")
-            train_dataset = BaseDataset(train_data)            
+            train_dataset = BaseDataset(train_data)      
+            sample = train_dataset[0]
+
+            # In ra thông tin của anchor, positive, và negative sample
+            print("Anchor Sample:")
+            for key, value in sample.items():
+                print(f"  {key}: {value}")      
+                
             num_train_labels = len(cur_labels)
             if self.args.contrastive_learning:
                train_dataset = convert_to_contrastivbbe_learning_dataset(train_dataset)
