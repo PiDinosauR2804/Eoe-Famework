@@ -11,6 +11,7 @@ task_args:
   model_name_or_path: "<MODEL_PATH>"
   config_name: "<MODEL_PATH>"
   tokenizer_name: "<MODEL_PATH>"
+  contrastive_learning: False
 
 training_args:
   model_name: "SeqFT"
