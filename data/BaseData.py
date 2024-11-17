@@ -140,16 +140,17 @@ class BaseTripletDataset(Dataset):
         return self.data[idx]
     
     def convert_into_triplets(self):
+        print("Lenght_old: ", len(self.data))
         new_data = []
-        for ins in self.data:
-            anchor_labels = ins['labels']
+        for anchor in self.data:
+            anchor_labels = anchor['labels']
             negative_samples = []
             positive_samples = []
             for label in self.cur_labels:
                 if label == anchor_labels:
                     continue
-                new_negative = self.data.get_random_positive_samples_by_label(label, 1)
-                new_positive = self.data.get_random_positive_samples_by_label(anchor_labels, 1)
+                new_negative = self.get_random_positive_samples_by_label(label, 1)
+                new_positive = self.get_random_positive_samples_by_label(anchor_labels, 1)
                 for ins in new_negative:
                     negative_samples.append(ins)
                 for ins in new_positive:
@@ -157,21 +158,22 @@ class BaseTripletDataset(Dataset):
             for idx in range(min(len(negative_samples), len(positive_samples))):
                 negative_sample = negative_samples[idx]
                 ins = {
-                    'sentence': ins['sentence'],
-                    'input_ids': ins['input_ids'],  # default: add marker to the head entity and tail entity
-                    'subject_marker_st': ins['subject_marker_st'],
-                    'object_marker_st': ins['object_marker_st'],
-                    'labels': ins['labels'],
-                    'input_ids_without_marker': ins['input_ids_without_marker'],
-                    'subject_st': ins['subject_st'],
-                    'subject_ed': ins['subject_ed'],
-                    'object_st': ins['object_st'],
-                    'object_ed': ins['object_ed'],
+                    'sentence': anchor['sentence'],
+                    'input_ids': anchor['input_ids'],  # default: add marker to the head entity and tail entity
+                    'subject_marker_st': anchor['subject_marker_st'],
+                    'object_marker_st': anchor['object_marker_st'],
+                    'labels': anchor['labels'],
+                    'input_ids_without_marker': anchor['input_ids_without_marker'],
+                    'subject_st': anchor['subject_st'],
+                    'subject_ed': anchor['subject_ed'],
+                    'object_st': anchor['object_st'],
+                    'object_ed': anchor['object_ed'],
                     'negative_input_ids': negative_sample['input_ids'],  # default: add marker to the head entity and tail entity
                     'negative_subject_marker_st': negative_sample['subject_marker_st'],
                     'negative_object_marker_st': negative_sample['object_marker_st'],
                 }
-                new_data.append(idx)
+                new_data.append(ins)
+        print("Lenght_new: ", len(new_data))
         return new_data    
     
     def get_random_positive_samples_by_label(self, label, k):
