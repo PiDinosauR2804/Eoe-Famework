@@ -142,7 +142,7 @@ def get_negative_samples(data, samples, cur_labels):
             negative_samples.append(ins)
     return negative_samples
 
-def relation_data_augmentation_and_contrastive_learning(data, num_labels, cur_labels, id2label, if_contrastive_learning, marker_id=(35022, 35023, 35024, 35025), augment_type="all"):
+def relation_data_augmentation_and_contrastive_learning(data, num_labels, cur_labels, id2label, marker_id=(35022, 35023, 35024, 35025), augment_type="all"):
     subj_st_id, subj_ed_id, obj_st_id, obj_ed_id = marker_id
     new_label_dict = dict()
 
@@ -170,6 +170,8 @@ def relation_data_augmentation_and_contrastive_learning(data, num_labels, cur_la
             if cur_label not in new_label_dict:
                 new_label_dict[cur_label] = num_labels + len(new_label_dict)
             augment_label = new_label_dict[cur_label]
+            
+            
             input_ids = ins["input_ids"]
             subj_st, subj_ed = input_ids.index(subj_st_id), input_ids.index(subj_ed_id)
             obj_st, obj_ed = input_ids.index(obj_st_id), input_ids.index(obj_ed_id)
@@ -179,23 +181,36 @@ def relation_data_augmentation_and_contrastive_learning(data, num_labels, cur_la
             aug_input_ids[obj_st] = subj_st_id
             aug_input_ids[obj_ed] = subj_ed_id
             
-            if if_contrastive_learning:
-                input_ids = ins["input_ids"]
-                subj_st, subj_ed = input_ids.index(subj_st_id), input_ids.index(subj_ed_id)
-                obj_st, obj_ed = input_ids.index(obj_st_id), input_ids.index(obj_ed_id)
-                aug_input_ids = copy.deepcopy(input_ids)
-                aug_input_ids[subj_st] = obj_st_id
-                aug_input_ids[subj_ed] = obj_ed_id
-                aug_input_ids[obj_st] = subj_st_id
-                aug_input_ids[obj_ed] = subj_ed_id
-                
-                
-                
+            negative_input_ids = ins["negative_input_ids"]
+            negative_subj_st, negative_subj_ed = negative_input_ids.index(subj_st_id), negative_input_ids.index(subj_ed_id)
+            negative_obj_st, negative_obj_ed = negative_input_ids.index(obj_st_id), negative_input_ids.index(obj_ed_id)
+            negative_aug_input_ids = copy.deepcopy(negative_input_ids)
+            negative_aug_input_ids[negative_subj_st] = obj_st_id
+            negative_aug_input_ids[negative_subj_ed] = obj_ed_id
+            negative_aug_input_ids[negative_obj_st] = subj_st_id
+            negative_aug_input_ids[negative_obj_ed] = subj_ed_id
+            
+            positive_input_ids = ins["positive_input_ids"]
+            positive_subj_st, positive_subj_ed = positive_input_ids.index(subj_st_id), positive_input_ids.index(subj_ed_id)
+            positive_obj_st, positive_obj_ed = positive_input_ids.index(obj_st_id), positive_input_ids.index(obj_ed_id)
+            positive_aug_input_ids = copy.deepcopy(positive_input_ids)
+            positive_aug_input_ids[positive_subj_st] = obj_st_id
+            positive_aug_input_ids[positive_subj_ed] = obj_ed_id
+            positive_aug_input_ids[positive_obj_st] = subj_st_id
+            positive_aug_input_ids[positive_obj_ed] = subj_ed_id
+            
+            
             augment_data[augment_label].append({
                 "input_ids": aug_input_ids,
                 "subject_marker_st": obj_st,
                 "object_marker_st": subj_st,
                 "labels": augment_label,
+                "negative_input_ids": negative_aug_input_ids,
+                "negative_subject_marker_st": negative_obj_st,
+                "negative_object_marker_st": negative_subj_st,
+                "positive_input_ids": positive_aug_input_ids,
+                "positive_subject_marker_st": positive_obj_st,
+                "positive_object_marker_st": positive_subj_st,
             })
         for _, v in augment_data.items():
             data.extend(v)
@@ -205,6 +220,7 @@ def relation_data_augmentation_and_contrastive_learning(data, num_labels, cur_la
         # undetermined relation augmentation for origin_data and augment_data
         for idx in range(len(data)):
             ins = data[idx]
+            # Anchor
             input_ids = copy.deepcopy(ins["input_ids"])
             subj_st, subj_ed = input_ids.index(subj_st_id), input_ids.index(subj_ed_id)
             obj_st, obj_ed = input_ids.index(obj_st_id), input_ids.index(obj_ed_id)
@@ -216,16 +232,50 @@ def relation_data_augmentation_and_contrastive_learning(data, num_labels, cur_la
                 input_ids = obj + subj
             subj_st, subj_ed = input_ids.index(subj_st_id), input_ids.index(subj_ed_id)
             obj_st, obj_ed = input_ids.index(obj_st_id), input_ids.index(obj_ed_id)
+            
+            # Negative
+            negative_input_ids = copy.deepcopy(ins["negative_input_ids"])
+            negative_subj_st, negative_subj_ed = negative_input_ids.index(subj_st_id), negative_input_ids.index(subj_ed_id)
+            negative_obj_st, negative_obj_ed = negative_input_ids.index(obj_st_id), negative_input_ids.index(obj_ed_id)
+            negative_subj = negative_input_ids[negative_subj_st: negative_subj_ed + 1]
+            negative_obj = negative_input_ids[negative_obj_st: negative_obj_ed + 1]
+            if negative_subj_st < negative_obj_st:
+                negative_input_ids = negative_subj + negative_obj
+            else:
+                negative_input_ids = negative_obj + negative_subj
+            negative_subj_st, negative_subj_ed = negative_input_ids.index(subj_st_id), input_ids.index(subj_ed_id)
+            negative_obj_st, negative_obj_ed = negative_input_ids.index(obj_st_id), negative_input_ids.index(obj_ed_id)
+            
+            # Positive
+            positive_input_ids = copy.deepcopy(ins["positive_input_ids"])
+            positive_subj_st, positive_subj_ed = positive_input_ids.index(subj_st_id), positive_input_ids.index(subj_ed_id)
+            positive_obj_st, positive_obj_ed = positive_input_ids.index(obj_st_id), positive_input_ids.index(obj_ed_id)
+            positive_subj = positive_input_ids[positive_subj_st: positive_subj_ed + 1]
+            positive_obj = positive_input_ids[positive_obj_st: positive_obj_ed + 1]
+            if positive_subj_st < positive_obj_st:
+                positive_input_ids = positive_subj + positive_obj
+            else:
+                positive_input_ids = positive_obj + positive_subj
+            positive_subj_st, positive_subj_ed = positive_input_ids.index(subj_st_id), input_ids.index(subj_ed_id)
+            positive_obj_st, positive_obj_ed = positive_input_ids.index(obj_st_id), positive_input_ids.index(obj_ed_id)
+            
+            
             data.append({
                 "input_ids": input_ids,
                 "subject_marker_st": obj_st,
                 "object_marker_st": subj_st,
-                "labels": num_train_labels
+                "labels": num_train_labels,
+                "negative_input_ids": negative_aug_input_ids,
+                "negative_subject_marker_st": negative_obj_st,
+                "negative_object_marker_st": negative_subj_st,
+                "positive_input_ids": positive_aug_input_ids,
+                "positive_subject_marker_st": positive_obj_st,
+                "positive_object_marker_st": positive_subj_st,
             })
         num_train_labels += 1
 
     for idx in range(len(data)):
-        for del_key in ["sentence", "input_ids_without_marker", "subject_st", "subject_ed", "object_st", "object_ed"]:
+        for del_key in ["sentence", "input_ids_without_marker", "subject_st", "subject_ed", "object_st", "object_ed", "negative_input_ids_without_marker", "negative_subject_st", "negative_subject_ed", "negative_object_st", "negative_object_ed", "positive_input_ids_without_marker", "positive_subject_st", "positive_subject_ed", "positive_object_st", "positive_object_ed"]:
             if del_key in data[idx]:
                 del data[idx][del_key]
 

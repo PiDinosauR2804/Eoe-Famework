@@ -108,7 +108,7 @@ class BaseDataset(Dataset):
 
 
 class BaseTripletDataset(Dataset):
-    def __init__(self, data, cur_labels):
+    def __init__(self, data, len_seen_labels, len_cur_labels):
         
         if isinstance(data, dict):
             res = []
@@ -116,9 +116,14 @@ class BaseTripletDataset(Dataset):
                 res += data[key]
             data = res
         self.data = data
-        self.cur_labels = cur_labels
+        self.len_seen_labels = len_seen_labels
+        self.len_cur_labels = len_cur_labels
+        self.cur_labels = self.preprocess_label()
         self.data = self.convert_into_triplets()
-        
+    
+    def preprocess_label(self):
+        list_label = [(self.len_seen_labels-1-i) for i in range(self.len_cur_labels)]
+        return list_label
 
     def __len__(self):
         return len(self.data)
@@ -142,7 +147,7 @@ class BaseTripletDataset(Dataset):
     def convert_into_triplets(self):
         print("Lenght_old: ", len(self.data))
         new_data = []
-        for anchor in self.data:
+        for iddxx, anchor in enumerate(self.data):
             anchor_labels = anchor['labels']
             negative_samples = []
             positive_samples = []
@@ -156,9 +161,10 @@ class BaseTripletDataset(Dataset):
                 for ins in new_positive:
                     positive_samples.append(ins)
             for idx in range(min(len(negative_samples), len(positive_samples))):
+                
                 negative_sample = negative_samples[idx]
+                positive_sample = positive_samples[idx]
                 ins = {
-                    'sentence': anchor['sentence'],
                     'input_ids': anchor['input_ids'],  # default: add marker to the head entity and tail entity
                     'subject_marker_st': anchor['subject_marker_st'],
                     'object_marker_st': anchor['object_marker_st'],
@@ -168,9 +174,23 @@ class BaseTripletDataset(Dataset):
                     'subject_ed': anchor['subject_ed'],
                     'object_st': anchor['object_st'],
                     'object_ed': anchor['object_ed'],
+                    
                     'negative_input_ids': negative_sample['input_ids'],  # default: add marker to the head entity and tail entity
                     'negative_subject_marker_st': negative_sample['subject_marker_st'],
                     'negative_object_marker_st': negative_sample['object_marker_st'],
+                    'negative_subject_st': negative_sample['subject_st'],
+                    'negative_subject_ed': negative_sample['subject_ed'],
+                    'negative_object_st': negative_sample['object_st'],
+                    'negative_object_ed': negative_sample['object_ed'],
+                    
+                    'positive_input_ids': positive_sample['input_ids'],  # default: add marker to the head entity and tail entity
+                    'positive_subject_marker_st': positive_sample['subject_marker_st'],
+                    'positive_object_marker_st': positive_sample['object_marker_st'],
+                    'positive_subject_st': positive_sample['subject_st'],
+                    'positive_subject_ed': positive_sample['subject_ed'],
+                    'positive_object_st': positive_sample['object_st'],
+                    'positive_object_ed': positive_sample['object_ed'],
+                    
                 }
                 new_data.append(ins)
         print("Lenght_new: ", len(new_data))

@@ -46,23 +46,20 @@ class EoETrainer(BaseTrainer):
             logger.info(f"***** Task-{task_idx + 1} *****")
             logger.info(f"Current classes: {' '.join(cur_labels)}")
 
-            train_data = data.filter(cur_labels, "train")
-            train_dataset = BaseTripletDataset(train_data)      
-            
-            sample = train_dataset[0]
-
-            # In ra thông tin của anchor, positive, và negative sample
-            print("Anchor Sample:")
-            for key, value in sample.items():
-                print(f"  {key}: {value}")      
+            train_data = data.filter(cur_labels, "train") 
                 
             num_train_labels = len(cur_labels)
             if self.args.contrastive_learning:
-               train_dataset = convert_to_contrastivbbe_learning_dataset(train_dataset)
-               aug_train_data, num_train_labels = relation_data_augmentation_and_contrastive_learning(
+                train_dataset = BaseTripletDataset(train_data, len(seen_labels), len(cur_labels))       
+                aug_train_data, num_train_labels = relation_data_augmentation_and_contrastive_learning(
                     copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
                 )
+                sample = aug_train_data[0]
+                print("Anchor Sample:")
+                for key, value in sample.items():
+                    print(f"  {key}: {value}")  
             else:
+                train_dataset = BaseDataset(train_data)       
                 aug_train_data, num_train_labels = relation_data_augmentation(
                     copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
                 )
