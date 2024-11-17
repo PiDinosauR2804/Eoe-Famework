@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import set_seed
 
-from data import BaseDataset
+from data import BaseDataset, BaseTripletDataset
 from trainers import BaseTrainer
 from utils import CustomCollatorWithPadding, relation_data_augmentation, convert_to_contrastivbbe_learning_dataset, relation_data_augmentation_and_contrastive_learning
 
@@ -47,7 +47,8 @@ class EoETrainer(BaseTrainer):
             logger.info(f"Current classes: {' '.join(cur_labels)}")
 
             train_data = data.filter(cur_labels, "train")
-            train_dataset = BaseDataset(train_data)      
+            train_dataset = BaseTripletDataset(train_data)      
+            
             sample = train_dataset[0]
 
             # In ra thông tin của anchor, positive, và negative sample

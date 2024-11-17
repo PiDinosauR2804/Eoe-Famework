@@ -117,6 +117,8 @@ class BaseTripletDataset(Dataset):
             data = res
         self.data = data
         self.cur_labels = cur_labels
+        self.data = self.convert_into_triplets()
+        
 
     def __len__(self):
         return len(self.data)
@@ -152,10 +154,25 @@ class BaseTripletDataset(Dataset):
                     negative_samples.append(ins)
                 for ins in new_positive:
                     positive_samples.append(ins)
-            
-            
-
-            
+            for idx in range(min(len(negative_samples), len(positive_samples))):
+                negative_sample = negative_samples[idx]
+                ins = {
+                    'sentence': ins['sentence'],
+                    'input_ids': ins['input_ids'],  # default: add marker to the head entity and tail entity
+                    'subject_marker_st': ins['subject_marker_st'],
+                    'object_marker_st': ins['object_marker_st'],
+                    'labels': ins['labels'],
+                    'input_ids_without_marker': ins['input_ids_without_marker'],
+                    'subject_st': ins['subject_st'],
+                    'subject_ed': ins['subject_ed'],
+                    'object_st': ins['object_st'],
+                    'object_ed': ins['object_ed'],
+                    'negative_input_ids': negative_sample['input_ids'],  # default: add marker to the head entity and tail entity
+                    'negative_subject_marker_st': negative_sample['subject_marker_st'],
+                    'negative_object_marker_st': negative_sample['object_marker_st'],
+                }
+                new_data.append(idx)
+        return new_data    
     
     def get_random_positive_samples_by_label(self, label, k):
         """
