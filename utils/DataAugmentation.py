@@ -128,21 +128,7 @@ def relation_data_augmentation(data, num_labels, id2label, marker_id=(35022, 350
     print(new_label_dict)
     return data, num_train_labels
 
-def convert_to_contrastivbbe_learning_dataset(dataset):
-    return
-
-def get_negative_samples(data, samples, cur_labels):
-    anchor_labels = samples['labels']
-    negative_samples = []
-    for label in cur_labels:
-        if label == anchor_labels:
-            continue
-        new_negative = data.get_random_samples_by_label(label, 1)
-        for ins in new_negative:
-            negative_samples.append(ins)
-    return negative_samples
-
-def relation_data_augmentation_and_contrastive_learning(data, num_labels, cur_labels, id2label, marker_id=(35022, 35023, 35024, 35025), augment_type="all"):
+def relation_data_augmentation_and_contrastive_learning(data, num_labels, id2label, marker_id=(35022, 35023, 35024, 35025), augment_type="all"):
     subj_st_id, subj_ed_id, obj_st_id, obj_ed_id = marker_id
     new_label_dict = dict()
 

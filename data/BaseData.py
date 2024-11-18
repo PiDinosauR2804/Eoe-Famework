@@ -58,6 +58,76 @@ class BaseData:
         for idx in range(len(res)):
             res[idx]["labels"] = self.label2id[res[idx]["labels"]]
         return res
+    
+    def get_random_positive_samples_by_label(self, label, k):
+        """
+        Get k random samples from a specified label.
+        :param label: The label to filter samples by.
+        :param k: The number of random samples to retrieve.
+        :return: A list of k samples that have the specified label.
+        """
+        # Filter data based on the specified label
+
+        # Randomly sample k elements from the filtered data
+        random_samples = random.sample(self.val_data[label], k)
+        return random_samples
+    
+    def filter_and_contrastive_learning(self, labels):
+        if not isinstance(labels, list):
+            labels = [labels]
+        labels_label2id = [self.label2id[label_] for label_ in labels]
+        split = split.lower()
+        res = []
+        for label in labels:
+            sub_res = []
+            for anchor in self.train_data[label]:
+                negative_samples = []
+                positive_samples = []
+                anchor_labels = self.label2id[anchor["labels"]]
+                for label in labels_label2id:
+                    if label == anchor_labels:
+                        continue
+                    new_negative = self.get_random_positive_samples_by_label(label, 1)
+                    new_positive = self.get_random_positive_samples_by_label(anchor_labels, 1)
+                    for ins in new_negative:
+                        negative_samples.append(ins)
+                    for ins in new_positive:
+                        positive_samples.append(ins)
+                for idx in range(min(len(negative_samples), len(positive_samples))):
+                    negative_sample = negative_samples[idx]
+                    positive_sample = positive_samples[idx]
+                    ins = {
+                        'input_ids': anchor['input_ids'],  # default: add marker to the head entity and tail entity
+                        'subject_marker_st': anchor['subject_marker_st'],
+                        'object_marker_st': anchor['object_marker_st'],
+                        'labels': anchor['labels'],
+                        'input_ids_without_marker': anchor['input_ids_without_marker'],
+                        'subject_st': anchor['subject_st'],
+                        'subject_ed': anchor['subject_ed'],
+                        'object_st': anchor['object_st'],
+                        'object_ed': anchor['object_ed'],
+                        
+                        'negative_input_ids': negative_sample['input_ids'],  # default: add marker to the head entity and tail entity
+                        'negative_subject_marker_st': negative_sample['subject_marker_st'],
+                        'negative_object_marker_st': negative_sample['object_marker_st'],
+                        'negative_subject_st': negative_sample['subject_st'],
+                        'negative_subject_ed': negative_sample['subject_ed'],
+                        'negative_object_st': negative_sample['object_st'],
+                        'negative_object_ed': negative_sample['object_ed'],
+                        
+                        'positive_input_ids': positive_sample['input_ids'],  # default: add marker to the head entity and tail entity
+                        'positive_subject_marker_st': positive_sample['subject_marker_st'],
+                        'positive_object_marker_st': positive_sample['object_marker_st'],
+                        'positive_subject_st': positive_sample['subject_st'],
+                        'positive_subject_ed': positive_sample['subject_ed'],
+                        'positive_object_st': positive_sample['object_st'],
+                        'positive_object_ed': positive_sample['object_ed'],
+                    }
+                    sub_res.append(ins)
+                res += sub_res
+        for idx in range(len(res)):
+            res[idx]["labels"] = self.label2id[res[idx]["labels"]]
+        return res
 
 
 class BaseDataset(Dataset):
@@ -87,24 +157,6 @@ class BaseDataset(Dataset):
         # }
         # return [cur_data, augment_data]
         return self.data[idx]
-    
-    def get_random_samples_by_label(self, label, k):
-        """
-        Get k random samples from a specified label.
-        :param label: The label to filter samples by.
-        :param k: The number of random samples to retrieve.
-        :return: A list of k samples that have the specified label.
-        """
-        # Filter data based on the specified label
-        filtered_data = [item for item in self.data if item['labels'] == label]
-
-        # If k is greater than the number of available samples, return all the samples
-        if k > len(filtered_data):
-            return filtered_data
-
-        # Randomly sample k elements from the filtered data
-        random_samples = random.sample(filtered_data, k)
-        return random_samples
 
 
 class BaseTripletDataset(Dataset):
@@ -145,7 +197,7 @@ class BaseTripletDataset(Dataset):
         return self.data[idx]
     
     def convert_into_triplets(self):
-        print("Lenght_old: ", len(self.data))
+        # print("Lenght_old: ", len(self.data))
         new_data = []
         for iddxx, anchor in enumerate(self.data):
             anchor_labels = anchor['labels']
@@ -193,7 +245,7 @@ class BaseTripletDataset(Dataset):
                     
                 }
                 new_data.append(ins)
-        print("Lenght_new: ", len(new_data))
+        # print("Lenght_new: ", len(new_data))
         return new_data    
     
     def get_random_positive_samples_by_label(self, label, k):
