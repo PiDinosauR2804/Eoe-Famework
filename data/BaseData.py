@@ -69,30 +69,44 @@ class BaseData:
         # Filter data based on the specified label
 
         # Randomly sample k elements from the filtered data
-        random_samples = random.sample(self.val_data[label], k)
+        random_samples = random.sample(self.train_data[label], k)
         return random_samples
     
     def filter_and_contrastive_learning(self, labels):
         if not isinstance(labels, list):
             labels = [labels]
-        labels_label2id = [self.label2id[label_] for label_ in labels]
-        split = split.lower()
+        # labels_label2id = [self.label2id[label_] for label_ in labels]
+        print(labels)
         res = []
         for label in labels:
             sub_res = []
-            for anchor in self.train_data[label]:
+            print(len(self.train_data[label]))
+            for idxxxx, anchor in enumerate(self.train_data[label]):
+                sub_sub_res = []
+                # print(label)
+                # if idxxx:
+                #     print("-------")
+                # for key, value in anchor.items():
+                #     print(f"  {key}: {value}")
+                    
+                cur_label = anchor["labels"]
+                if cur_label in ['P26', 'P3373', 'per:siblings', 'org:alternate_names', 'per:spouse',
+                                        'per:alternate_names', 'per:other_family']:
+                    continue
                 negative_samples = []
                 positive_samples = []
-                anchor_labels = self.label2id[anchor["labels"]]
-                for label in labels_label2id:
-                    if label == anchor_labels:
+                for other_label in labels:
+                    if other_label == label:
                         continue
-                    new_negative = self.get_random_positive_samples_by_label(label, 1)
-                    new_positive = self.get_random_positive_samples_by_label(anchor_labels, 1)
+                    new_negative = self.get_random_positive_samples_by_label(other_label, 1)
+                    new_positive = self.get_random_positive_samples_by_label(label, 1)
                     for ins in new_negative:
                         negative_samples.append(ins)
                     for ins in new_positive:
                         positive_samples.append(ins)
+                if idxxxx == 0:
+                    print(len(negative_samples))
+                    print(len(positive_samples))
                 for idx in range(min(len(negative_samples), len(positive_samples))):
                     negative_sample = negative_samples[idx]
                     positive_sample = positive_samples[idx]
@@ -123,8 +137,10 @@ class BaseData:
                         'positive_object_st': positive_sample['object_st'],
                         'positive_object_ed': positive_sample['object_ed'],
                     }
-                    sub_res.append(ins)
-                res += sub_res
+                    sub_sub_res.append(ins)
+                sub_res += sub_sub_res
+            res += sub_res
+        print(len(res))
         for idx in range(len(res)):
             res[idx]["labels"] = self.label2id[res[idx]["labels"]]
         return res

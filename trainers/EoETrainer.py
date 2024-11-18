@@ -14,7 +14,7 @@ from transformers import set_seed
 
 from data import BaseDataset, BaseTripletDataset
 from trainers import BaseTrainer
-from utils import CustomCollatorWithPadding, relation_data_augmentation, convert_to_contrastivbbe_learning_dataset, relation_data_augmentation_and_contrastive_learning
+from utils import CustomCollatorWithPadding, relation_data_augmentation, relation_data_augmentation_and_contrastive_learning
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,8 @@ class EoETrainer(BaseTrainer):
                 print(f"  {key}: {value}") 
             
             num_train_labels = len(cur_labels)
-            train_dataset = BaseDataset(train_data)       
+            train_dataset = BaseDataset(train_data)
+                 
             aug_train_data, num_train_labels = relation_data_augmentation(
                 copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
             )                
