@@ -9,6 +9,7 @@ import torch.nn.functional as F
 
 from models import PeftFeatureExtractor
 from utils import mahalanobis
+from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer
 
 
 class EoE(nn.Module):
@@ -22,7 +23,7 @@ class EoE(nn.Module):
         self.max_expert = config.max_expert if config.max_expert != -1 else float("inf")
 
         self.feature_extractor = PeftFeatureExtractor(config)
-
+        
         self.num_old_labels = 0
         self.num_labels = 0
         self.num_tasks = -1
@@ -48,8 +49,22 @@ class EoE(nn.Module):
                 "cov_inv": torch.ones(self.query_size, self.query_size),
             }
         ]
-
+        self.label_description = {}
         self.classifier = nn.ParameterList()
+
+    def generate_description(self, label):
+        model_name = "gpt2"  # Bạn có thể thay thế bằng một mô hình ngôn ngữ mã nguồn mở khác
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model = AutoModelForCausalLM.from_pretrained(model_name)
+        
+        generator = pipeline("text-generation", model=model, tokenizer=tokenizer)
+        
+        prompt = f"Describe the label '{label}' in a simple and detailed way: "
+        descriptions = generator(prompt, max_length=50, num_return_sequences=3)
+        
+        # Lưu mô tả nhãn vào label_description
+        self.label_description[label] = [desc['generated_text'] for desc in descriptions]
+        return
 
     def load_expert_model(self, expert_model):
         ckpt = torch.load(expert_model)
