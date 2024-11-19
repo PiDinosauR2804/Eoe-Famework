@@ -75,15 +75,15 @@ class BaseData:
         random_samples = random.sample(self.train_data[label], k)
         return random_samples
     
-    def filter_and_contrastive_learning(self, labels):
+    def filter_and_contrastive_learning_and_add_desciption(self, labels, descriptions):
         if not isinstance(labels, list):
             labels = [labels]
         # labels_label2id = [self.label2id[label_] for label_ in labels]
         print(labels)
         res = []
         for label in labels:
+            pools = descriptions[label]
             sub_res = []
-            print(len(self.train_data[label]))
             for idxxxx, anchor in enumerate(self.train_data[label]):
                 sub_sub_res = []
                 # print(label)
@@ -123,6 +123,7 @@ class BaseData:
                         'subject_ed': anchor['subject_ed'],
                         'object_st': anchor['object_st'],
                         'object_ed': anchor['object_ed'],
+                        'descriptions_ids': pools,
                         
                         'negative_input_ids': negative_sample['input_ids'],  # default: add marker to the head entity and tail entity
                         'negative_subject_marker_st': negative_sample['subject_marker_st'],
@@ -143,7 +144,6 @@ class BaseData:
                     sub_sub_res.append(ins)
                 sub_res += sub_sub_res
             res += sub_res
-        print(len(res))
         for idx in range(len(res)):
             res[idx]["labels"] = self.label2id[res[idx]["labels"]]
         return res

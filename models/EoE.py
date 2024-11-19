@@ -69,15 +69,13 @@ class EoE(nn.Module):
         self.label_description[label] = [desc['generated_text'] for desc in descriptions]
 
     def generate_description_from_file(self, label, dataset_name, tokenizer):
+        print("Done")
         if dataset_name.lower() == 'fewrel':
             file_path = 'datasets/FewRel/pid2name.json'
             with open(file_path, 'r', encoding='utf-8') as json_file:
                 data = json.load(json_file)
-                return data
-        
+                        
         # Lưu mô tả nhãn vào label_description
-        print(label)
-        print(data[label])
         self.label_description_ids[label] = [self.preprocess_desciption(desc, tokenizer) for desc in data[label]]
         self.label_description[label] = [desc for desc in data[label]]
         
@@ -89,6 +87,12 @@ class EoE(nn.Module):
         pool = {}
         for label in labels:
             pool[label] = copy.deepcopy(self.label_description[label])
+        return pool
+    
+    def get_description_ids(self, labels):
+        pool = {}
+        for label in labels:
+            pool[label] = copy.deepcopy(self.label_description_ids[label])
         return pool
 
     def load_expert_model(self, expert_model):
