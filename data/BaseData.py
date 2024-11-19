@@ -107,9 +107,7 @@ class BaseData:
                         negative_samples.append(ins)
                     for ins in new_positive:
                         positive_samples.append(ins)
-                if idxxxx == 0:
-                    print(len(negative_samples))
-                    print(len(positive_samples))
+                        
                 for idx in range(min(len(negative_samples), len(positive_samples))):
                     negative_sample = negative_samples[idx]
                     positive_sample = positive_samples[idx]

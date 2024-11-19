@@ -406,7 +406,7 @@ class EoETrainer(BaseTrainer):
 
         for step, inputs in enumerate(loader):
             label = inputs.pop('labels')
-            inputs = {k: v.to(self.args.device) for k, v in inputs.items()}
+            inputs = {k: v.to(self.args.device) for k, v in inputs.items() if k in ['input_ids', 'subject_marker_st', 'object_marker_st', 'labels', 'input_ids_without_marker', 'subject_st', 'subject_ed', 'object_st', 'object_ed']}
             inputs.update({"return_hidden_states": True})
             inputs.update({"task_idx": expert_id})
 
