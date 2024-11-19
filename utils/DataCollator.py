@@ -37,5 +37,6 @@ class CustomCollatorWithPadding:
             for k in batch_keys:
                 batch[k].append(ins[k])
         for k in batch_keys:
+            print(k)
             batch[k] = self.pad_to_same_length(batch[k])
         return batch
