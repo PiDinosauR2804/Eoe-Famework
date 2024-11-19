@@ -64,7 +64,12 @@ class EoE(nn.Module):
         
         # Lưu mô tả nhãn vào label_description
         self.label_description[label] = [desc['generated_text'] for desc in descriptions]
-        return
+        
+    def get_description(self, labels):
+        pool = {}
+        for label in labels:
+            pool[label] = copy.deepcopy(self.label_description[label])
+        return pool
 
     def load_expert_model(self, expert_model):
         ckpt = torch.load(expert_model)
