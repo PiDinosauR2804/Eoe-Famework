@@ -48,6 +48,7 @@ class EoETrainer(BaseTrainer):
             for cur_label in cur_labels:
                 model.generate_description_from_file(cur_label, self.args.dataset_name, tokenizer)
             pool = model.get_description_ids(cur_labels)
+            
             if self.args.contrastive_learning:
                 train_data = data.filter_and_contrastive_learning_and_add_desciption(cur_labels, pool) 
             else:

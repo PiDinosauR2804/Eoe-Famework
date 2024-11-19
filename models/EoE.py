@@ -81,7 +81,7 @@ class EoE(nn.Module):
         
     def preprocess_desciption(self, raw_text, tokenizer):
         result = tokenizer(raw_text)
-        return result    
+        return result['input_ids']
         
     def get_description(self, labels):
         pool = {}
