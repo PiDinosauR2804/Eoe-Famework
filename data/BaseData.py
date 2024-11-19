@@ -107,10 +107,14 @@ class BaseData:
                         negative_samples.append(ins)
                     for ins in new_positive:
                         positive_samples.append(ins)
-                        
-                for idx in range(min(len(negative_samples), len(positive_samples))):
+                
+                random.shuffle(negative_samples)
+                random.shuffle(positive_samples)
+                
+                for idx in range(min(len(negative_samples), len(positive_samples), len(pools))):
                     negative_sample = negative_samples[idx]
                     positive_sample = positive_samples[idx]
+                    descriptions_ids = pools[idx]
                     ins = {
                         'input_ids': anchor['input_ids'],  # default: add marker to the head entity and tail entity
                         'subject_marker_st': anchor['subject_marker_st'],
@@ -121,7 +125,7 @@ class BaseData:
                         'subject_ed': anchor['subject_ed'],
                         'object_st': anchor['object_st'],
                         'object_ed': anchor['object_ed'],
-                        'descriptions_ids': pools,
+                        'descriptions_ids': descriptions_ids,
                         
                         'negative_input_ids': negative_sample['input_ids'],  # default: add marker to the head entity and tail entity
                         'negative_subject_marker_st': negative_sample['subject_marker_st'],

@@ -24,6 +24,7 @@ class EoETrainer(BaseTrainer):
         super().__init__(args, **kwargs)
         self.task_idx = 0
         self.cur_seed = 0
+        
 
     def run(self, data, model, tokenizer, label_order, seed=None):
         if seed is not None:
@@ -79,16 +80,16 @@ class EoETrainer(BaseTrainer):
             
             model.new_task(num_train_labels)
 
-            # if self.task_idx == 0:
-            #     expert_model = f"./ckpt/{self.args.dataset_name}_{seed}_{self.args.augment_type}.pth"
-            #     model.load_expert_model(expert_model)
-            #     logger.info(f"load first task model from {expert_model}")
-            # else:
-            #     self.train(
-            #         model=model,
-            #         train_dataset=aug_train_dataset,
-            #         data_collator=default_data_collator
-            #     )
+            if self.task_idx == 0:
+                expert_model = f"./ckpt/{self.args.dataset_name}_{seed}_{self.args.augment_type}.pth"
+                model.load_expert_model(expert_model)
+                logger.info(f"load first task model from {expert_model}")
+            else:
+                self.train(
+                    model=model,
+                    train_dataset=aug_train_dataset,
+                    data_collator=default_data_collator
+                )
 
             os.makedirs(f"./ckpt/{self.args.dataset_name}-{seed}-{self.args.augment_type}", exist_ok=True)
             model.save_classifier(
@@ -115,7 +116,7 @@ class EoETrainer(BaseTrainer):
                 eval_dataset=cur_test_dataset,
                 data_collator=default_data_collator,
                 seen_labels=seen_labels,
-                label2task_id=copy.deepcopy(data.label2task_id),
+                label2task_id=copy.deepcopy(data.label2task_id), 
                 oracle=True,
             )
 

@@ -53,6 +53,7 @@ class EoE(nn.Module):
         self.label_description = {}
         self.label_description_ids = {}
         self.classifier = nn.ParameterList()
+        self.triplet_loss_fn = nn.TripletMarginLoss(margin=1.0, p=2)
 
     def generate_description(self, label, tokenizer):
         model_name = "gpt2"  # Bạn có thể thay thế bằng một mô hình ngôn ngữ mã nguồn mở khác
@@ -184,7 +185,7 @@ class EoE(nn.Module):
 
         return indices, scores_over_tasks, class_indices_over_tasks
 
-    def forward(self, input_ids, attention_mask=None, labels=None, oracle=False, **kwargs):
+    def forward(self, input_ids, attention_mask=None, positive_input_ids=None, negative_input_ids=None, labels=None, oracle=False, **kwargs):
 
         batch_size, _ = input_ids.shape
         if attention_mask is None:
@@ -308,9 +309,27 @@ class EoE(nn.Module):
         logits = self.classifier[self.num_tasks](hidden_states)
 
         loss = None
+        triplet_loss = 0.0
         if self.training:
             offset_label = labels - self.num_old_labels
             loss = F.cross_entropy(logits, offset_label)
+            
+            anchor_hidden_states = hidden_states
+            if positive_input_ids is not None and negative_input_ids is not None:
+                positive_hidden_states = self.feature_extractor(
+                    input_ids=positive_input_ids,
+                    attention_mask=positive_input_ids != 0,
+                    indices=indices,
+                    **kwargs
+                )
+                negative_hidden_states = self.feature_extractor(
+                    input_ids=negative_input_ids,
+                    attention_mask=negative_input_ids != 0,
+                    indices=indices,
+                    **kwargs
+                )
+                triplet_loss = self.triplet_loss_fn(anchor_hidden_states, positive_hidden_states, negative_hidden_states)
+                loss += triplet_loss
 
         logits = logits[:, :self.class_per_task]
         preds = logits.max(dim=-1)[1] + self.class_per_task * indices
