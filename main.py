@@ -106,7 +106,7 @@ def main(cfg: DictConfig):
             model=model,
             tokenizer=tokenizer,
             label_order=task_seq,
-            seed=exp_seed
+            seed=exp_seed        
         )
         exp_results.append(exp_result)
         
