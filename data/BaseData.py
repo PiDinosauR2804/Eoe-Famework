@@ -59,6 +59,9 @@ class BaseData:
             res[idx]["labels"] = self.label2id[res[idx]["labels"]]
         return res
     
+        
+
+    
     def get_random_positive_samples_by_label(self, label, k):
         """
         Get k random samples from a specified label.

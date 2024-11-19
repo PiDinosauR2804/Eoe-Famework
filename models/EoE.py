@@ -1,4 +1,5 @@
 import copy
+import json
 from collections import Counter
 from dataclasses import dataclass
 from typing import Optional, Tuple
@@ -50,9 +51,10 @@ class EoE(nn.Module):
             }
         ]
         self.label_description = {}
+        self.label_description_ids = {}
         self.classifier = nn.ParameterList()
 
-    def generate_description(self, label):
+    def generate_description(self, label, tokenizer):
         model_name = "gpt2"  # Bạn có thể thay thế bằng một mô hình ngôn ngữ mã nguồn mở khác
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         model = AutoModelForCausalLM.from_pretrained(model_name)
@@ -63,7 +65,23 @@ class EoE(nn.Module):
         descriptions = generator(prompt, max_length=50, num_return_sequences=3)
         
         # Lưu mô tả nhãn vào label_description
+        self.label_description_ids[label] = [self.preprocess_desciption(desc['generated_text']) for desc in descriptions]
         self.label_description[label] = [desc['generated_text'] for desc in descriptions]
+
+    def generate_description_from_file(self, label, dataset_name):
+        if dataset_name.lower() == 'fewrel':
+            file_path = 'datasets/FewRel/pid2name.json'
+            with open(file_path, 'r', encoding='utf-8') as json_file:
+                data = json.load(json_file)
+                return data
+        
+        # Lưu mô tả nhãn vào label_description
+        self.label_description_ids[label] = [self.preprocess_desciption(desc) for desc in data[label]]
+        self.label_description[label] = [desc for desc in data[label]]
+        
+    def preprocess_desciption(self, raw_text, tokenizer):
+        result = tokenizer(raw_text)
+        return result    
         
     def get_description(self, labels):
         pool = {}
