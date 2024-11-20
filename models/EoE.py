@@ -76,11 +76,11 @@ class EoE(nn.Module):
                 data = json.load(json_file)
                         
         # Lưu mô tả nhãn vào label_description
-        self.label_description_ids[label] = [self.preprocess_desciption(desc, tokenizer) for desc in data[label]]
-        self.label_description[label] = [desc for desc in data[label]]
+        # self.label_description_ids[label] = [self.preprocess_desciption(desc, tokenizer) for desc in data[label]]
+        # self.label_description[label] = [desc for desc in data[label]]
         
-        # self.label_description_ids[label] = [self.preprocess_desciption(data[label][0], tokenizer)]
-        # self.label_description[label] = [data[label][0]]
+        self.label_description_ids[label] = [self.preprocess_desciption(data[label][-1], tokenizer)]
+        self.label_description[label] = [data[label][-1]]
         
     def preprocess_desciption(self, raw_text, tokenizer):
         result = tokenizer(raw_text)
@@ -353,7 +353,6 @@ class EoE(nn.Module):
 
                 positve_attention_mask = positive_input_ids != 0
                 negative_attention_mask = negative_input_ids != 0
-                print(f"attention_mask size: {attention_mask.size()}")
                 
                 # print(f"negative_attention_mask size: {negative_attention_mask.size()}")
                 # print(f"positve_attention_mask size: {positve_attention_mask.size()}")

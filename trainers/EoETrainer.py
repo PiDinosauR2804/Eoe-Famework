@@ -56,13 +56,12 @@ class EoETrainer(BaseTrainer):
                 train_data = data.filter(cur_labels, "train") 
             
             sample = train_data[0]
-            print("Anchor Sample:")
-            for key, value in sample.items():
-                print(f"  {key}: {value}") 
+            # print("Anchor Sample:")
+            # for key, value in sample.items():
+            #     print(f"  {key}: {value}") 
             
             num_train_labels = len(cur_labels)
             train_dataset = BaseDataset(train_data)
-            print("-----------------")
             
             # for key, value in pool.items():
             #     print(f"  {key}: {value}") 
