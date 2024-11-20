@@ -70,7 +70,6 @@ class EoE(nn.Module):
         self.label_description[label] = [desc['generated_text'] for desc in descriptions]
 
     def generate_description_from_file(self, label, dataset_name, tokenizer):
-        print("Done")
         if dataset_name.lower() == 'fewrel':
             file_path = 'datasets/FewRel/pid2name.json'
             with open(file_path, 'r', encoding='utf-8') as json_file:
@@ -315,6 +314,12 @@ class EoE(nn.Module):
             loss = F.cross_entropy(logits, offset_label)
             
             anchor_hidden_states = hidden_states
+            
+            print("First------------------")
+            print(input_ids.size())
+            print(positive_input_ids.size())
+            print(negative_input_ids.size())
+            
             if positive_input_ids is not None and negative_input_ids is not None:
                 positive_hidden_states = self.feature_extractor(
                     input_ids=positive_input_ids,
@@ -328,6 +333,10 @@ class EoE(nn.Module):
                     indices=indices,
                     **kwargs
                 )
+                print("Second------------------")
+                print(hidden_states.size())
+                print(positive_hidden_states.size())
+                print(negative_hidden_states.size())
                 triplet_loss = self.triplet_loss_fn(anchor_hidden_states, positive_hidden_states, negative_hidden_states)
                 loss += triplet_loss
 
