@@ -76,8 +76,11 @@ class EoE(nn.Module):
                 data = json.load(json_file)
                         
         # Lưu mô tả nhãn vào label_description
-        self.label_description_ids[label] = [self.preprocess_desciption(desc, tokenizer) for desc in data[label]]
-        self.label_description[label] = [desc for desc in data[label]]
+        # self.label_description_ids[label] = [self.preprocess_desciption(desc, tokenizer) for desc in data[label]]
+        # self.label_description[label] = [desc for desc in data[label]]
+        
+        self.label_description_ids[label] = [self.preprocess_desciption(data[label][0], tokenizer)]
+        self.label_description[label] = [data[label][0]]
         
     def preprocess_desciption(self, raw_text, tokenizer):
         result = tokenizer(raw_text)
