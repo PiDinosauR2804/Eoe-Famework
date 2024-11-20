@@ -33,7 +33,6 @@ class CustomCollatorWithPadding:
     def __call__(self, features: List[Dict[str, Any]]) -> Dict[str, Any]:
         batch_keys = features[0].keys()
         batch = {k: [] for k in batch_keys}
-        print(batch_keys)
         for ins in features:
             for k in batch_keys:
                 batch[k].append(ins[k])
