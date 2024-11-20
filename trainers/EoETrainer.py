@@ -176,19 +176,19 @@ class EoETrainer(BaseTrainer):
             aug_train_data, num_train_labels = relation_data_augmentation(
                 copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
             )
-            # aug_train_dataset = BaseDataset(aug_train_data)
+            aug_train_dataset = BaseDataset(aug_train_data)
             model.new_task(num_train_labels)
 
-            # if self.task_idx == 0:
-            #     z = f"./ckpt/{self.args.dataset_name}_{seed}_{self.args.augment_type}.pth"
-            #     model.load_expert_model(expert_model)
-            #     logger.info(f"load first task model from {expert_model}")
-            # else:
-            #     self.train(
-            #         model=model,
-            #         train_dataset=aug_train_dataset,
-            #         data_collator=default_data_collator
-            #     )
+            if self.task_idx == 0:
+                expert_model = f"./ckpt/{self.args.dataset_name}_{seed}_{self.args.augment_type}.pth"
+                model.load_expert_model(expert_model)
+                logger.info(f"load first task model from {expert_model}")
+            else:
+                self.train(
+                    model=model,
+                    train_dataset=aug_train_dataset,
+                    data_collator=default_data_collator
+                )
 
             # os.makedirs(f"./ckpt/{self.args.dataset_name}-{seed}-{self.args.augment_type}", exist_ok=True)
             # model.save_classifier(
@@ -407,7 +407,7 @@ class EoETrainer(BaseTrainer):
 
         for step, inputs in enumerate(loader):
             label = inputs.pop('labels')
-            inputs = {k: v.to(self.args.device) for k, v in inputs.items() if k in ['input_ids', 'subject_marker_st', 'object_marker_st', 'labels', 'input_ids_without_marker', 'subject_st', 'subject_ed', 'object_st', 'object_ed']}
+            inputs = {k: v.to(self.args.device) for k, v in inputs.items()}
             inputs.update({"return_hidden_states": True})
             inputs.update({"task_idx": expert_id})
 

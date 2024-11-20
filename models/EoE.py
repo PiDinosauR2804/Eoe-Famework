@@ -353,6 +353,9 @@ class EoE(nn.Module):
 
         logits = logits[:, :self.class_per_task]
         preds = logits.max(dim=-1)[1] + self.class_per_task * indices
+        
+        print(f"indices: {indices}, max allowed index: {self.num_tasks - 1}")
+        
         indices = indices.tolist() if isinstance(indices, torch.Tensor) else indices
         return ExpertOutput(
             loss=loss,
