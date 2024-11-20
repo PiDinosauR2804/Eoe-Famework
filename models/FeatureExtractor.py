@@ -37,6 +37,8 @@ class PeftFeatureExtractor(nn.Module):
         self.n_embd = self.bert.config.hidden_size // self.bert.config.num_attention_heads
         self.hidden_size = self.bert.config.hidden_size
         self.dropout = nn.Dropout(self.bert.config.hidden_dropout_prob)
+        
+        self.output_layer = nn.Linear(self.hidden_size, self.hidden_size * 2)
 
         if config.task_name == "RelationExtraction":
             self.extract_mode = "entity_marker"
@@ -175,6 +177,7 @@ class PeftFeatureExtractor(nn.Module):
         # different feature extraction modes
         if extract_mode == "cls":
             hidden_states = outputs[1]  # (batch, dim)
+            hidden_states = self.output_layer(hidden_states)
         elif extract_mode == "mean_pooling":
             # (batch, dim)
             hidden_states = torch.sum(outputs[0] * attention_mask.unsqueeze(-1), dim=1) / \
