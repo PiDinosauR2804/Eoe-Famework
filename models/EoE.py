@@ -184,7 +184,7 @@ class EoE(nn.Module):
 
         return indices, scores_over_tasks, class_indices_over_tasks
 
-    def info_nce_loss(self, anchor, positive, negatives, temperature=0.07):
+    def info_nce_loss(self, anchor, positive, negative, temperature=0.07):
         # anchor: [batch_size, dim]
         # positive: [batch_size, dim]
         # negatives: [batch_size, num_negatives, dim]
@@ -192,13 +192,13 @@ class EoE(nn.Module):
         # Normalize embeddings
         anchor = F.normalize(anchor, dim=1)
         positive = F.normalize(positive, dim=1)
-        negatives = F.normalize(negatives, dim=2)
+        negative = F.normalize(negative, dim=1)
 
         # Positive logits
         pos_logits = torch.sum(anchor * positive, dim=1, keepdim=True) / temperature  # [batch_size, 1]
 
         # Negative logits
-        neg_logits = torch.bmm(negatives, anchor.unsqueeze(2)).squeeze(2) / temperature  # [batch_size, num_negatives]
+        neg_logits = torch.sum(anchor * negative, dim=1, keepdim=True) / temperature  # [batch_size, 1]
 
         # Combine logits
         logits = torch.cat([pos_logits, neg_logits], dim=1)  # [batch_size, 1 + num_negatives]
