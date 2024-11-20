@@ -67,7 +67,9 @@ class EoETrainer(BaseTrainer):
             # for key, value in pool.items():
             #     print(f"  {key}: {value}") 
             
-            
+            aug_train_data, num_train_labels = relation_data_augmentation(
+                    copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
+                )   
             # if self.args.contrastive_learning:
             #     aug_train_data, num_train_labels = relation_data_augmentation_and_contrastive_learning(
             #         copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
@@ -76,7 +78,7 @@ class EoETrainer(BaseTrainer):
             #     aug_train_data, num_train_labels = relation_data_augmentation(
             #         copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
             #     )                
-            # aug_train_dataset = BaseDataset(aug_train_data)
+            aug_train_dataset = BaseDataset(aug_train_data)
             
             model.new_task(num_train_labels)
 
@@ -87,7 +89,7 @@ class EoETrainer(BaseTrainer):
             else:
                 self.train(
                     model=model,
-                    train_dataset=train_dataset,
+                    train_dataset=aug_train_dataset,
                     data_collator=default_data_collator
                 )
 
