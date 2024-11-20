@@ -171,6 +171,8 @@ class EoETrainer(BaseTrainer):
             logger.info(f"Current classes: {' '.join(cur_labels)}")
 
             train_data = data.filter(cur_labels, "train")
+            
+            
             train_dataset = BaseDataset(train_data)
             num_train_labels = len(cur_labels)
             aug_train_data, num_train_labels = relation_data_augmentation(
