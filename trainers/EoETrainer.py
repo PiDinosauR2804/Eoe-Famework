@@ -68,15 +68,15 @@ class EoETrainer(BaseTrainer):
             #     print(f"  {key}: {value}") 
             
             
-            if self.args.contrastive_learning:
-                aug_train_data, num_train_labels = relation_data_augmentation_and_contrastive_learning(
-                    copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
-                )                
-            else:
-                aug_train_data, num_train_labels = relation_data_augmentation(
-                    copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
-                )                
-            aug_train_dataset = BaseDataset(aug_train_data)
+            # if self.args.contrastive_learning:
+            #     aug_train_data, num_train_labels = relation_data_augmentation_and_contrastive_learning(
+            #         copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
+            #     )                
+            # else:
+            #     aug_train_data, num_train_labels = relation_data_augmentation(
+            #         copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
+            #     )                
+            # aug_train_dataset = BaseDataset(aug_train_data)
             
             model.new_task(num_train_labels)
 
@@ -87,7 +87,7 @@ class EoETrainer(BaseTrainer):
             else:
                 self.train(
                     model=model,
-                    train_dataset=aug_train_dataset,
+                    train_dataset=train_dataset,
                     data_collator=default_data_collator
                 )
 

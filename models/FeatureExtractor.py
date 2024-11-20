@@ -122,6 +122,7 @@ class PeftFeatureExtractor(nn.Module):
             attention_mask=None,
             extract_mode=None,
             use_origin=False,
+            attribute=None,
             indices=None,
             **kwargs
     ):
@@ -196,8 +197,15 @@ class PeftFeatureExtractor(nn.Module):
                 hidden_states.append(torch.cat([subj, obj]))
             hidden_states = torch.stack(hidden_states, dim=0)
         elif extract_mode == "entity_marker":
-            subject_start_pos = kwargs["subject_marker_st"]
-            object_start_pos = kwargs["object_marker_st"]
+            if attribute == None or attribute == "anchor":
+                subject_start_pos = kwargs["subject_marker_st"]
+                object_start_pos = kwargs["object_marker_st"]
+            elif attribute == "positive":
+                subject_start_pos = kwargs["positive_subject_marker_st"]
+                object_start_pos = kwargs["positive_object_marker_st"]
+            elif attribute == "negative":
+                subject_start_pos = kwargs["negative_subject_marker_st"]
+                object_start_pos = kwargs["negative_object_marker_st"]
             last_hidden_states = outputs[0]
             idx = torch.arange(last_hidden_states.size(0)).to(last_hidden_states.device)
             ss_emb = last_hidden_states[idx, subject_start_pos]

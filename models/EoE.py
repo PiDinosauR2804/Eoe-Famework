@@ -303,6 +303,7 @@ class EoE(nn.Module):
             input_ids=input_ids,
             attention_mask=attention_mask,
             indices=indices,
+            attribute="anchor",
             **kwargs
         )
         logits = self.classifier[self.num_tasks](hidden_states)
@@ -315,38 +316,37 @@ class EoE(nn.Module):
             
             anchor_hidden_states = hidden_states
             
-            print("First------------------")
-            print(input_ids.size())
-            print(positive_input_ids.size())
-            print(negative_input_ids.size())
+            # print("First------------------")
+            # print(input_ids.size())
+            # print(positive_input_ids.size())
+            # print(negative_input_ids.size())
             
             if positive_input_ids is not None and negative_input_ids is not None:
-                
-                if isinstance(indices, torch.Tensor):
-                    print(f"indices: {indices}, max allowed index: {self.num_tasks - 1}")
 
                 positve_attention_mask = positive_input_ids != 0
                 negative_attention_mask = negative_input_ids != 0
                 print(f"attention_mask size: {attention_mask.size()}")
-                print(f"negative_attention_mask size: {negative_attention_mask.size()}")
-                print(f"positve_attention_mask size: {positve_attention_mask.size()}")
+                # print(f"negative_attention_mask size: {negative_attention_mask.size()}")
+                # print(f"positve_attention_mask size: {positve_attention_mask.size()}")
                 
                 positive_hidden_states = self.feature_extractor(
                     input_ids=positive_input_ids,
                     attention_mask=positve_attention_mask,
                     indices=indices,
+                    attribute="positive",
                     **kwargs
                 )
                 negative_hidden_states = self.feature_extractor(
                     input_ids=negative_input_ids,
                     attention_mask=negative_attention_mask,
                     indices=indices,
+                    attribute="negative",
                     **kwargs
                 )
-                print("Second------------------")
-                print(hidden_states.size())
-                print(positive_hidden_states.size())
-                print(negative_hidden_states.size())
+                # print("Second------------------")
+                # print(hidden_states.size())
+                # print(positive_hidden_states.size())
+                # print(negative_hidden_states.size())
                 
                 triplet_loss = self.triplet_loss_fn(anchor_hidden_states, positive_hidden_states, negative_hidden_states)
                 loss += triplet_loss
