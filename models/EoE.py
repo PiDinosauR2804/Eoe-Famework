@@ -184,7 +184,32 @@ class EoE(nn.Module):
 
         return indices, scores_over_tasks, class_indices_over_tasks
 
-    def forward(self, input_ids, attention_mask=None, positive_input_ids=None, negative_input_ids=None, labels=None, oracle=False, **kwargs):
+    def info_nce_loss(self, anchor, positive, negatives, temperature=0.07):
+        # anchor: [batch_size, dim]
+        # positive: [batch_size, dim]
+        # negatives: [batch_size, num_negatives, dim]
+
+        # Normalize embeddings
+        anchor = F.normalize(anchor, dim=1)
+        positive = F.normalize(positive, dim=1)
+        negatives = F.normalize(negatives, dim=2)
+
+        # Positive logits
+        pos_logits = torch.sum(anchor * positive, dim=1, keepdim=True) / temperature  # [batch_size, 1]
+
+        # Negative logits
+        neg_logits = torch.bmm(negatives, anchor.unsqueeze(2)).squeeze(2) / temperature  # [batch_size, num_negatives]
+
+        # Combine logits
+        logits = torch.cat([pos_logits, neg_logits], dim=1)  # [batch_size, 1 + num_negatives]
+
+        labels = torch.zeros(anchor.size(0), dtype=torch.long).to(anchor.device)
+
+        # Compute loss
+        loss = F.cross_entropy(logits, labels)
+        return loss
+
+    def forward(self, input_ids, attention_mask=None, positive_input_ids=None, negative_input_ids=None, labels=None, oracle=False, descriptions_ids=None, **kwargs):
 
         batch_size, _ = input_ids.shape
         if attention_mask is None:
@@ -326,6 +351,7 @@ class EoE(nn.Module):
                 positve_attention_mask = positive_input_ids != 0
                 negative_attention_mask = negative_input_ids != 0
                 print(f"attention_mask size: {attention_mask.size()}")
+                
                 # print(f"negative_attention_mask size: {negative_attention_mask.size()}")
                 # print(f"positve_attention_mask size: {positve_attention_mask.size()}")
                 
@@ -350,12 +376,20 @@ class EoE(nn.Module):
                 
                 triplet_loss = self.triplet_loss_fn(anchor_hidden_states, positive_hidden_states, negative_hidden_states)
                 loss += triplet_loss
+            if descriptions_ids is not None:
+                description_hidden_states = self.feature_extractor(
+                    input_ids=descriptions_ids,
+                    attention_mask=(descriptions_ids != 0),
+                    indices=indices,
+                    extract_mode="cls",
+                    **kwargs
+                )
+                info_nce_loss_value = self.info_nce_loss(anchor_hidden_states, description_hidden_states, negative_hidden_states)
+                loss += info_nce_loss_value
 
         logits = logits[:, :self.class_per_task]
         preds = logits.max(dim=-1)[1] + self.class_per_task * indices
-        
-        print(f"indices: {indices}, max allowed index: {self.num_tasks - 1}")
-        
+                
         indices = indices.tolist() if isinstance(indices, torch.Tensor) else indices
         return ExpertOutput(
             loss=loss,
