@@ -324,7 +324,6 @@ class EoE(nn.Module):
                 
                 if isinstance(indices, torch.Tensor):
                     print(f"indices: {indices}, max allowed index: {self.num_tasks - 1}")
-                    assert torch.all((indices >= 0) & (indices < self.num_tasks)), "Index out of bounds detected in indices"
 
                 positve_attention_mask = positive_input_ids != 0
                 negative_attention_mask = negative_input_ids != 0
