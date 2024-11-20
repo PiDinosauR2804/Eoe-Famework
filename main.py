@@ -3,6 +3,7 @@ import os
 import random
 import sys
 from types import SimpleNamespace
+import torch
 
 import hydra
 import numpy as np
@@ -95,6 +96,11 @@ def main(cfg: DictConfig):
             task_seq = tmp_seq
 
         data.read_and_preprocess(tokenizer, seed=exp_seed)
+
+        if torch.cuda.is_available():
+            args.device = "cuda:0"
+        else:
+            args.device = "cpu"
 
         model = task_to_model[args.model_name](args)
         model.to(args.device)
