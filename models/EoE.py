@@ -80,14 +80,17 @@ class EoE(nn.Module):
         generator = pipeline("text-generation", model=model, tokenizer=tokenizer)
         
         prompt = f"Describe the label '{label_name}' in a simple and detailed way: "
-        descriptions = generator(prompt, max_length=50, num_return_sequences=1)
+        descriptions = generator(prompt, 
+                                 
+                                 max_length=50, num_return_sequences=1)
         
         # Lưu mô tả nhãn vào label_description
+        print(descriptions[0]['generated_text'].replace(prompt, '').strip())
         
         self.label_description[label] = [self.preprocess_text(desc['generated_text'].replace(prompt, '').strip()) for desc in descriptions]
         for desc in self.label_description[label]:
             print(desc)
-        self.label_description_ids[label] = [self.preprocess_desciption(desc) for desc in self.label_description[label]]
+        self.label_description_ids[label] = [self.preprocess_tokenize_desciption(desc, tokenizer) for desc in self.label_description[label]]
 
     def generate_description_from_file(self, label, dataset_name, tokenizer):
         if dataset_name.lower() == 'fewrel':
