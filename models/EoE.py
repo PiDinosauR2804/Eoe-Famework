@@ -72,11 +72,9 @@ class EoE(nn.Module):
         
         prompt = f"Describe the label '{label_name}' in a simple and detailed way: "
         descriptions = generator(prompt, max_length=50, num_return_sequences=3)
-        for description in descriptions:
-            print(description)
         
         # Lưu mô tả nhãn vào label_description
-        self.label_description_ids[label] = [self.preprocess_desciption(desc['generated_text'].replace(prompt, '').strip()) for desc in descriptions]
+        self.label_description_ids[label] = [self.preprocess_desciption(desc['generated_text'].replace(prompt, '').strip(), tokenizer) for desc in descriptions]
         self.label_description[label] = [desc['generated_text'].replace(prompt, '').strip() for desc in descriptions]
 
     def generate_description_from_file(self, label, dataset_name, tokenizer):
@@ -399,40 +397,39 @@ class EoE(nn.Module):
             # print(input_ids.size())
             # print(positive_input_ids.size())
             # print(negative_input_ids.size())
-            if use_origin is None:
-                description_ids_list = {k: v for k, v in kwargs.items() if k.startswith('description_ids_')}
+            description_ids_list = {k: v for k, v in kwargs.items() if k.startswith('description_ids_')}
 
-                for k, v in description_ids_list.items():
-                    description_hidden_states = self.feature_extractor(
-                        input_ids=v,
-                        attention_mask=(v != 0),
-                        indices=indices,
-                        extract_mode="cls",
-                        **kwargs
-                    )
-                    info_nce_loss_value = self.info_nce_loss(anchor_hidden_states, description_hidden_states)
-                    
-                    # contrastive regularization Loss
-                    
-                    # Compute numerator: exp(h · μ_c / τ)
-                    numerator_list = []
-                    for expert in self.expert_distribution:
-                        class_mean = expert["class_mean"]
-                        numerator_list.append(torch.exp(torch.dot(anchor_hidden_states, class_mean) / self.tau))
-                    # numerator = torch.sum(torch.stack(numerator_list))
-                    
-                    # Compute denominator: sum(exp(h · h' / τ)) + sum(exp(h · μ_c / τ))
-                    denominator_list = []
-                    denominator_list.append(torch.exp(torch.dot(anchor_hidden_states, description_hidden_states) / self.tau))
-                    denominator_list.extend(numerator_list)  # Add numerator terms for μ_c
-                    denominator = torch.sum(torch.stack(denominator_list))
+            for k, v in description_ids_list.items():
+                description_hidden_states = self.feature_extractor(
+                    input_ids=v,
+                    attention_mask=(v != 0),
+                    indices=indices,
+                    extract_mode="cls",
+                    **kwargs
+                )
+                info_nce_loss_value = self.info_nce_loss(anchor_hidden_states, description_hidden_states)
+                
+                # contrastive regularization Loss
+                
+                # Compute numerator: exp(h · μ_c / τ)
+                numerator_list = []
+                for expert in self.expert_distribution:
+                    class_mean = expert["class_mean"]
+                    numerator_list.append(torch.exp(torch.dot(anchor_hidden_states, class_mean) / self.tau))
+                # numerator = torch.sum(torch.stack(numerator_list))
+                
+                # Compute denominator: sum(exp(h · h' / τ)) + sum(exp(h · μ_c / τ))
+                denominator_list = []
+                denominator_list.append(torch.exp(torch.dot(anchor_hidden_states, description_hidden_states) / self.tau))
+                denominator_list.extend(numerator_list)  # Add numerator terms for μ_c
+                denominator = torch.sum(torch.stack(denominator_list))
 
-                    # Compute log term
-                    for numerator in numerator_list:
-                        log_term = torch.log(numerator / denominator)
-                        loss += log_term
-                        
-                    loss += info_nce_loss_value            
+                # Compute log term
+                for numerator in numerator_list:
+                    log_term = torch.log(numerator / denominator)
+                    loss += log_term
+                    
+                loss += info_nce_loss_value            
 
         # logits = logits[:, :self.class_per_task]
         # preds = logits.max(dim=-1)[1] + self.class_per_task * indices

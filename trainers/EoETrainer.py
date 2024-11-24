@@ -47,7 +47,6 @@ class EoETrainer(BaseTrainer):
             logger.info(f"***** Task-{task_idx + 1} *****")
             logger.info(f"Current classes: {' '.join(cur_labels)}")
             for cur_label in cur_labels:
-                print("hehe")
                 model.generate_description(cur_label, self.args.dataset_name, tokenizer)
             pool = model.get_description_ids(cur_labels)
             
@@ -112,26 +111,26 @@ class EoETrainer(BaseTrainer):
             cur_test_dataset = BaseDataset(cur_test_data)
             history_test_dataset = BaseDataset(history_test_data)
 
-            cur_acc, cur_hit = self.eval(
-                model=model,
-                eval_dataset=cur_test_dataset,
-                data_collator=default_data_collator,
-                seen_labels=seen_labels,
-                label2task_id=copy.deepcopy(data.label2task_id), 
-                oracle=True,
-            )
+            # cur_acc, cur_hit = self.eval(
+            #     model=model,
+            #     eval_dataset=cur_test_dataset,
+            #     data_collator=default_data_collator,
+            #     seen_labels=seen_labels,
+            #     label2task_id=copy.deepcopy(data.label2task_id), 
+            #     oracle=True,
+            # )
 
-            total_acc, total_hit = self.eval(
-                model=model,
-                eval_dataset=history_test_dataset,
-                data_collator=default_data_collator,
-                seen_labels=seen_labels,
-                label2task_id=copy.deepcopy(data.label2task_id),
-            )
+            # total_acc, total_hit = self.eval(
+            #     model=model,
+            #     eval_dataset=history_test_dataset,
+            #     data_collator=default_data_collator,
+            #     seen_labels=seen_labels,
+            #     label2task_id=copy.deepcopy(data.label2task_id),
+            # )
 
-            all_cur_acc.append(cur_acc)
-            all_total_acc.append(total_acc)
-            all_total_hit.append(total_hit)
+            # all_cur_acc.append(cur_acc)
+            # all_total_acc.append(total_acc)
+            # all_total_hit.append(total_hit)
 
         # save distribution
         save_data = {
