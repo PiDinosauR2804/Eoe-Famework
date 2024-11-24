@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import set_seed
 
-from data import BaseDataset, BaseTripletDataset
+from data import BaseDataset, BaseTripletDataset, BaseHidden
 from trainers import BaseTrainer
 from utils import CustomCollatorWithPadding, relation_data_augmentation, relation_data_augmentation_and_contrastive_learning
 
@@ -46,6 +46,7 @@ class EoETrainer(BaseTrainer):
 
             logger.info(f"***** Task-{task_idx + 1} *****")
             logger.info(f"Current classes: {' '.join(cur_labels)}")
+            
             for cur_label in cur_labels:
                 model.generate_description(cur_label, self.args.dataset_name, tokenizer)
             pool = model.get_description_ids(cur_labels)
@@ -58,25 +59,10 @@ class EoETrainer(BaseTrainer):
             for key, value in sample.items():
                 print(f"  {key}: {value}") 
             
+            
             num_train_labels = len(cur_labels)
             train_dataset = BaseDataset(train_data)
-            train_dataset_old = BaseDataset(train_data_old)
-            
-            # for key, value in pool.items():
-            #     print(f"  {key}: {value}") 
-            
-            # aug_train_data, num_train_labels = relation_data_augmentation(
-            #         copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
-            #     )   
-            # if self.args.contrastive_learning:
-            #     aug_train_data, num_train_labels = relation_data_augmentation_and_contrastive_learning(
-            #         copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
-            #     )                
-            # else:
-            #     aug_train_data, num_train_labels = relation_data_augmentation(
-            #         copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
-            #     )                
-            # aug_train_dataset = BaseDataset(aug_train_data)
+            train_dataset_old = BaseDataset(train_data_old)     
             
             model.new_task(num_train_labels)
 
@@ -84,12 +70,34 @@ class EoETrainer(BaseTrainer):
                 expert_model = f"./ckpt/{self.args.dataset_name}_{seed}_{self.args.augment_type}.pth"
                 model.load_expert_model(expert_model)
                 logger.info(f"load first task model from {expert_model}")
-            else:
-                self.train(
-                    model=model,
-                    train_dataset=train_dataset,
-                    data_collator=default_data_collator
-                )
+            # else:
+            #     self.train(
+            #         model=model,
+            #         train_dataset=train_dataset,
+            #         data_collator=default_data_collator
+            #     )
+                
+            self.statistic(model, train_dataset_old, default_data_collator)
+                
+            print(model.expert_distribution['class_mean'])
+            print(model.expert_distribution['cov_inv'])
+            print(model.expert_distribution['accumulate_cov'])
+            print(model.num_labels)
+            baseHidden = BaseHidden(model.num_labels, model.expert_distribution['class_mean'], model.expert_distribution['accumulate_cov'])
+            hidden_data = baseHidden.generate_hidden_data()
+            hidden_dataset = BaseDataset(hidden_data)
+            
+            self.train_mlp2(
+                model=model,
+                train_dataset=hidden_dataset,
+                data_collator=default_data_collator
+            )
+            
+            sample = hidden_data[0]
+            print("Anchor Sample:")
+            for key, value in sample.items():
+                print(len(value))
+                print(f"  {key}: {value}") 
 
             os.makedirs(f"./ckpt/{self.args.dataset_name}-{seed}-{self.args.augment_type}", exist_ok=True)
             model.save_classifier(
@@ -103,10 +111,8 @@ class EoETrainer(BaseTrainer):
                 save=True,
             )
 
-            self.statistic(model, train_dataset_old, default_data_collator)
-
-            cur_test_data = data.filter(cur_labels, 'test')
-            history_test_data = data.filter(seen_labels, 'test')
+            # cur_test_data = data.filter(cur_labels, 'test')
+            # history_test_data = data.filter(seen_labels, 'test')
 
             # cur_test_dataset = BaseDataset(cur_test_data)
             # history_test_dataset = BaseDataset(history_test_data)
@@ -192,6 +198,71 @@ class EoETrainer(BaseTrainer):
                 self.optimizer.zero_grad()
 
                 inputs = {k: v.to(self.args.device) for k, v in inputs.items()}
+                outputs = model(**inputs)
+                loss = outputs.loss
+                loss.backward()
+                nn.utils.clip_grad_norm_(model.parameters(), self.args.max_grad_norm)
+
+                self.optimizer.step()
+                
+                # self.optimizer.zero_grad()
+
+                # inputs['use_origin'] = True
+                # outputs = model(**inputs)
+                # loss = outputs.loss
+                # loss.backward()
+                # nn.utils.clip_grad_norm_(model.parameters(), self.args.max_grad_norm)
+
+                # self.optimizer.step()
+
+                progress_bar.update(1)
+                progress_bar.set_postfix({"Loss": loss.item()})
+
+        progress_bar.close()
+        
+    def train_mlp2(self, model, train_dataset, data_collator):
+        train_dataloader = DataLoader(
+            train_dataset,
+            batch_size=self.args.train_batch_size,
+            shuffle=True,
+            collate_fn=data_collator
+        )
+        len_dataloader = len(train_dataloader)
+        num_examples = len(train_dataset)
+        max_steps = len_dataloader * self.args.num_train_epochs
+
+        logger.info("***** Running training *****")
+        logger.info(f"  Num examples = {num_examples}")
+        logger.info(f"  Num Epochs = {self.args.num_train_epochs}")
+        logger.info(f"  Train batch size = {self.args.train_batch_size}")
+        logger.info(f"  Total optimization steps = {max_steps}")
+
+        no_decay = ["bias", "LayerNorm.weight"]
+        parameters = [
+            {'params': [p for n, p in model.named_parameters() if 'feature_extractor' in n and not any(nd in n for nd in no_decay)],
+             'lr': self.args.learning_rate, 'weight_decay': 1e-2},
+            {'params': [p for n, p in model.named_parameters() if 'feature_extractor' in n and any(nd in n for nd in no_decay)],
+             'lr': self.args.learning_rate, 'weight_decay': 0.0},
+            {'params': [p for n, p in model.named_parameters() if 'feature_extractor' not in n and not any(nd in n for nd in no_decay)],
+             'lr': self.args.classifier_learning_rate, 'weight_decay': 1e-2},
+            {'params': [p for n, p in model.named_parameters() if 'feature_extractor' not in n and any(nd in n for nd in no_decay)],
+             'lr': self.args.classifier_learning_rate, 'weight_decay': 0.0},
+        ]
+        self.optimizer = AdamW(parameters)
+
+        progress_bar = tqdm(range(max_steps))
+        for name, param in model.named_parameters():
+            if param.requires_grad and "lora_" in name:
+                print(name)
+                break
+
+        for epoch in range(self.args.num_train_epochs):
+            model.train()
+            for step, inputs in enumerate(train_dataloader):
+                self.optimizer.zero_grad()
+
+                inputs = {k: v.to(self.args.device) for k, v in inputs.items()}
+                inputs.update({"mlp2": True})
                 outputs = model(**inputs)
                 loss = outputs.loss
                 loss.backward()

@@ -84,12 +84,8 @@ class EoE(nn.Module):
                                  
                                  max_length=50, num_return_sequences=1)
         
-        # Lưu mô tả nhãn vào label_description
-        print(descriptions[0]['generated_text'].replace(prompt, '').strip())
-        
+        # Lưu mô tả nhãn vào label_description        
         self.label_description[label] = [self.preprocess_text(desc['generated_text'].replace(prompt, '').strip()) for desc in descriptions]
-        for desc in self.label_description[label]:
-            print(desc)
         self.label_description_ids[label] = [self.preprocess_tokenize_desciption(desc, tokenizer) for desc in self.label_description[label]]
 
     def generate_description_from_file(self, label, dataset_name, tokenizer):
@@ -106,7 +102,7 @@ class EoE(nn.Module):
         self.label_description_ids[label] = [self.preprocess_tokenize_desciption(data[label][-1], tokenizer)]
         self.label_description[label] = [data[label][-1]]
         
-    def preprocess_text(text):
+    def preprocess_text(self, text):
         text = text.lower()
         text = re.sub(r'[^a-zA-Z0-9.,?!()\s]', '', text)
         text = text.strip()
@@ -210,8 +206,8 @@ class EoE(nn.Module):
         # self.expert_distribution[expert_id]["cov_inv"] = torch.linalg.pinv(avg_cov, hermitian=True)
         
         self.expert_distribution["class_mean"].extend(mean.cuda())
-        self.expert_distribution["accumulate_cov"] += cov
-        avg_cov = self.expert_distribution["accumulate_cov"].cuda() / length
+        self.expert_distribution["accumulate_cov"] = cov
+        avg_cov = self.expert_distribution["accumulate_cov"].cuda()
         self.expert_distribution["cov_inv"] = torch.linalg.pinv(avg_cov, hermitian=True)
         
 
@@ -295,8 +291,7 @@ class EoE(nn.Module):
                 hidden_states = self.feature_extractor(
                     input_ids=input_ids,
                     attention_mask=(input_ids!=0),
-                    indices=indices,
-                    use_origin=use_origin,
+                    indices=None,
                     **kwargs
                 )
                 if "extract_mode" in kwargs:
@@ -406,7 +401,26 @@ class EoE(nn.Module):
                 expert_task_preds=all_score_over_task,
                 expert_class_preds=all_score_over_class,
             )
+        
+        
+        if "mlp2" in kwargs and kwargs["mlp2"]:
+            hidden_states = input_ids
+            logits = self.classifier_only_bert[self.num_tasks](hidden_states.float())
+            if self.training:
+                offset_label = labels
+                loss = F.cross_entropy(logits, offset_label)
             
+            logits = logits[:, :]
+            preds = logits.max(dim=-1)[1]
+            
+            indices = indices.tolist() if isinstance(indices, torch.Tensor) else indices
+            return ExpertOutput(
+                loss=loss,
+                preds=preds,
+                hidden_states=hidden_states,
+                indices=indices,
+            )
+        
         # only for training
         hidden_states = self.feature_extractor(
             input_ids=input_ids,
@@ -423,13 +437,14 @@ class EoE(nn.Module):
             loss = F.cross_entropy(logits, offset_label)
             
             anchor_hidden_states = hidden_states
-            
+            # print("anchor_hidden_states")
+            # print(anchor_hidden_states)
             # print("First------------------")
             # print(input_ids.size())
             # print(positive_input_ids.size())
             # print(negative_input_ids.size())
             description_ids_list = {k: v for k, v in kwargs.items() if k.startswith('description_ids_')}
-
+            total_log_term = torch.zeros(1, device=self.device)
             for k, v in description_ids_list.items():
                 
                 description_hidden_states = self.feature_extractor(
@@ -439,6 +454,8 @@ class EoE(nn.Module):
                     extract_mode="cls",
                     **kwargs
                 )
+                # print("description_hidden_states")
+                # print(description_hidden_states)
                 # info_nce_loss_value = self.info_nce_loss(anchor_hidden_states, description_hidden_states)
                 
                 # contrastive regularization Loss
@@ -446,25 +463,32 @@ class EoE(nn.Module):
                 # Compute numerator: exp(h · μ_c / τ)
                 numerator_list = []
                 for class_mean in self.expert_distribution["class_mean"]:
-                    print(class_mean)
-                    print(anchor_hidden_states)
-                    print(class_mean.shape)
-                    print(anchor_hidden_states.shape)
-                    numerator_list.append(torch.exp(torch.dot(anchor_hidden_states, class_mean) / self.tau))
+                    # print(class_mean)
+                    # print(anchor_hidden_states)
+                    # print(class_mean.shape)
+                    # print(anchor_hidden_states.shape)
+                    numerator_list.append(torch.exp(torch.matmul(anchor_hidden_states, class_mean.unsqueeze(1)) / self.tau))
                 # numerator = torch.sum(torch.stack(numerator_list))
                 
                 # Compute denominator: sum(exp(h · h' / τ)) + sum(exp(h · μ_c / τ))
                 denominator_list = []
-                denominator_list.append(torch.exp(torch.dot(anchor_hidden_states, description_hidden_states) / self.tau))
+                denominator_list.append(torch.exp((anchor_hidden_states * description_hidden_states).sum(dim=1, keepdim=True) / self.tau))
                 denominator_list.extend(numerator_list)  # Add numerator terms for μ_c
                 denominator = torch.sum(torch.stack(denominator_list))
 
                 # Compute log term
+                log_term =torch.zeros(batch_size, 1, device=self.device)
                 for numerator in numerator_list:
-                    log_term = torch.log(numerator / denominator)
-                    loss += log_term
+                    log_term += torch.log(numerator / denominator)
+                    # print("------------------")
+                    # print(numerator)
+                    # print(denominator)
+                loss += log_term.mean()
+                total_log_term += log_term.mean()
+            
+            loss += total_log_term / len(description_ids_list)
                     
-                # loss += info_nce_loss_value            
+                # loss += info_nce_loss_value               
 
         # logits = logits[:, :self.class_per_task]
         # preds = logits.max(dim=-1)[1] + self.class_per_task * indices
