@@ -85,6 +85,8 @@ class EoE(nn.Module):
         # Lưu mô tả nhãn vào label_description
         
         self.label_description[label] = [self.preprocess_text(desc['generated_text'].replace(prompt, '').strip()) for desc in descriptions]
+        for desc in self.label_description[label]:
+            print(desc)
         self.label_description_ids[label] = [self.preprocess_desciption(desc) for desc in self.label_description[label]]
 
     def generate_description_from_file(self, label, dataset_name, tokenizer):
