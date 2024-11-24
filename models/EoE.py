@@ -191,8 +191,8 @@ class EoE(nn.Module):
         # avg_cov = self.expert_distribution[expert_id]["accumulate_cov"].cuda() / length
         # self.expert_distribution[expert_id]["cov_inv"] = torch.linalg.pinv(avg_cov, hermitian=True)
         
-        self.expert_distribution["class_mean"].append(mean.cuda())
-        self.expert_distribution[expert_id]["accumulate_cov"] += cov
+        self.expert_distribution["class_mean"].extend(mean.cuda())
+        self.expert_distribution["accumulate_cov"] += cov
         avg_cov = self.expert_distribution[expert_id]["accumulate_cov"].cuda() / length
         self.expert_distribution["cov_inv"] = torch.linalg.pinv(avg_cov, hermitian=True)
         
