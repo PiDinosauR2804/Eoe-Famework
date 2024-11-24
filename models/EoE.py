@@ -44,13 +44,18 @@ class EoE(nn.Module):
         self.hidden_size = self.feature_extractor.bert.config.hidden_size
 
         # 0-bert 1-10 task
-        self.expert_distribution = [
-            {
+        # self.expert_distribution = [
+        #     {
+        #         "class_mean": [],
+        #         "accumulate_cov": torch.zeros(self.query_size, self.query_size),
+        #         "cov_inv": torch.ones(self.query_size, self.query_size),
+        #     }
+        # ]
+        self.expert_distribution = {
                 "class_mean": [],
                 "accumulate_cov": torch.zeros(self.query_size, self.query_size),
                 "cov_inv": torch.ones(self.query_size, self.query_size),
             }
-        ]
         self.label_description = {}
         self.label_description_ids = {}
         self.classifier = nn.ParameterList()
@@ -71,7 +76,7 @@ class EoE(nn.Module):
         generator = pipeline("text-generation", model=model, tokenizer=tokenizer)
         
         prompt = f"Describe the label '{label_name}' in a simple and detailed way: "
-        descriptions = generator(prompt, max_length=50, num_return_sequences=3)
+        descriptions = generator(prompt, max_length=50, num_return_sequences=1)
         
         # Lưu mô tả nhãn vào label_description
         self.label_description_ids[label] = [self.preprocess_desciption(desc['generated_text'].replace(prompt, '').strip(), tokenizer) for desc in descriptions]
@@ -181,10 +186,16 @@ class EoE(nn.Module):
             length = self.num_tasks + 1
         else:
             length = self.num_tasks - expert_id + 2
-        self.expert_distribution[expert_id]["class_mean"].append(mean.cuda())
+        # self.expert_distribution[expert_id]["class_mean"].append(mean.cuda())
+        # self.expert_distribution[expert_id]["accumulate_cov"] += cov
+        # avg_cov = self.expert_distribution[expert_id]["accumulate_cov"].cuda() / length
+        # self.expert_distribution[expert_id]["cov_inv"] = torch.linalg.pinv(avg_cov, hermitian=True)
+        
+        self.expert_distribution["class_mean"].append(mean.cuda())
         self.expert_distribution[expert_id]["accumulate_cov"] += cov
         avg_cov = self.expert_distribution[expert_id]["accumulate_cov"].cuda() / length
-        self.expert_distribution[expert_id]["cov_inv"] = torch.linalg.pinv(avg_cov, hermitian=True)
+        self.expert_distribution["cov_inv"] = torch.linalg.pinv(avg_cov, hermitian=True)
+        
 
     def shift_expert_id(self, expert_id):
         return expert_id + 1
@@ -374,17 +385,6 @@ class EoE(nn.Module):
             **kwargs
         )
         logits = self.classifier[self.num_tasks](hidden_states)
-        
-        # else:
-        #     hidden_states = self.feature_extractor(
-        #         input_ids=input_ids,
-        #         attention_mask=attention_mask,
-        #         indices=indices,
-        #         attribute="anchor",
-        #         use_origin=True,
-        #         **kwargs
-        #     )
-        #     logits = self.classifier_only_bert[self.num_tasks](hidden_states)
 
         loss = None
         if self.training:

@@ -129,23 +129,26 @@ class PeftFeatureExtractor(nn.Module):
             **kwargs
     ):
         batch_size, _ = input_ids.size()
-
+        print("1")
         if attention_mask is None:
             attention_mask = input_ids != 0
-
+        print("2")
         if use_origin:
+            print("3")
             outputs = self.origin_bert(
                 input_ids,
                 attention_mask=attention_mask,
             )
         elif self.peft_type is not None and indices is not None:
             if self.peft_type == "lora":
+                print("3")
                 self.load_adapter(indices[0])
                 outputs = self.peft_bert(
                     input_ids,
                     attention_mask=attention_mask,
                 )
             elif self.peft_type == "prefix":
+                print("4")
                 past_key_values, attention_mask, _ = self.get_prompts_by_indices(indices, attention_mask)
                 outputs = self.bert(
                     input_ids,
@@ -153,6 +156,7 @@ class PeftFeatureExtractor(nn.Module):
                     past_key_values=past_key_values
                 )
             elif self.peft_type == "prompt":
+                print("5")
                 _, attention_mask, prompt = self.get_prompts_by_indices(indices, attention_mask)
                 prompt_len = prompt.shape[1]
                 inputs_embeds = self.bert.embeddings.word_embeddings(input_ids)
@@ -167,27 +171,33 @@ class PeftFeatureExtractor(nn.Module):
                 raise NotImplementedError
         else:
             # only for tuning
+            print("6")
             outputs = self.bert(
                 input_ids,
                 attention_mask=attention_mask,
                 past_key_values=kwargs["past_key_values"] if "past_key_values" in kwargs else None,
             )
 
+        print("7")
         extract_mode = extract_mode if extract_mode is not None else self.extract_mode
         # different feature extraction modes
         if extract_mode == "cls":
+            print("8")
             hidden_states = outputs[1]  # (batch, dim)
             hidden_states = self.output_layer(hidden_states)
         elif extract_mode == "mean_pooling":
+            print("9")
             # (batch, dim)
             hidden_states = torch.sum(outputs[0] * attention_mask.unsqueeze(-1), dim=1) / \
                             torch.sum(attention_mask, dim=1).unsqueeze(-1)
         elif extract_mode == "mask":
+            print("10")
             mask_pos = kwargs["mask_pos"]
             last_hidden_states = outputs[0]
             idx = torch.arange(last_hidden_states.size(0)).to(last_hidden_states.device)
             hidden_states = last_hidden_states[idx, mask_pos]
         elif extract_mode == "entity":
+            print("11")
             last_hidden_states = outputs[0]
             subj_st, subj_ed = kwargs["subject_st"], kwargs["subject_ed"]
             obj_st, obj_ed = kwargs["object_st"], kwargs["object_ed"]
@@ -200,6 +210,7 @@ class PeftFeatureExtractor(nn.Module):
                 hidden_states.append(torch.cat([subj, obj]))
             hidden_states = torch.stack(hidden_states, dim=0)
         elif extract_mode == "entity_marker":
+            print("12")
             if attribute == None or attribute == "anchor":
                 subject_start_pos = kwargs["subject_marker_st"]
                 object_start_pos = kwargs["object_marker_st"]
@@ -215,6 +226,7 @@ class PeftFeatureExtractor(nn.Module):
             os_emb = last_hidden_states[idx, object_start_pos]
             hidden_states = torch.cat([ss_emb, os_emb], dim=-1)  # (batch, 2 * dim)
         else:
+            print("13")
             raise NotImplementedError
 
         return hidden_states

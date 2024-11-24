@@ -289,9 +289,8 @@ class EoETrainer(BaseTrainer):
         return acc, hit_acc
 
     def statistic(self, model, dataset, data_collator):
-        for i in range(-1, self.task_idx + 1):
-            mean, cov, task_mean, task_cov = self.get_mean_and_cov(model, dataset, data_collator, i)
-            model.new_statistic(mean, cov, task_mean, task_cov, i)
+        mean, cov, task_mean, task_cov = self.get_mean_and_cov(model, dataset, data_collator, self.task_idx)
+        model.new_statistic(mean, cov, task_mean, task_cov, self.task_idx)
 
     @torch.no_grad()
     def get_mean_and_cov(self, model, dataset, data_collator, expert_id=0):
@@ -341,3 +340,59 @@ class EoETrainer(BaseTrainer):
         shared_cov = torch.stack(cov_over_classes).mean(dim=0)
 
         return mean_over_classes, shared_cov, task_mean, task_cov
+
+
+    # def statistic(self, model, dataset, data_collator):
+    #     for i in range(-1, self.task_idx + 1):
+    #         mean, cov, task_mean, task_cov = self.get_mean_and_cov(model, dataset, data_collator, i)
+    #         model.new_statistic(mean, cov, task_mean, task_cov, i)
+
+    # @torch.no_grad()
+    # def get_mean_and_cov(self, model, dataset, data_collator, expert_id=0):
+    #     loader = DataLoader(
+    #         dataset,
+    #         batch_size=self.args.eval_batch_size,
+    #         shuffle=False,
+    #         collate_fn=data_collator,
+    #     )
+    #     model.eval()
+
+    #     prelogits = []
+    #     labels = []
+
+    #     for step, inputs in enumerate(loader):
+    #         label = inputs.pop('labels')
+    #         inputs = {k: v.to(self.args.device) for k, v in inputs.items()}
+    #         inputs.update({"return_hidden_states": True})
+    #         inputs.update({"task_idx": expert_id})
+
+    #         prelogit = model(**inputs)
+
+    #         prelogits.extend(prelogit.tolist())
+    #         labels.extend(label.tolist())
+
+    #     prelogits = torch.tensor(prelogits)
+    #     labels = torch.tensor(labels)
+    #     labels_space = torch.unique(labels)
+
+    #     task_mean = prelogits.mean(dim=0)
+    #     task_cov = torch.cov((prelogits - task_mean).T)
+
+    #     mean_over_classes = []
+    #     cov_over_classes = []
+    #     for c in labels_space:
+    #         embeds = prelogits[labels == c]
+    #         if embeds.numel() > 0:
+    #             mean = embeds.mean(dim=0)
+    #             cov = torch.cov((embeds - mean).T)
+    #         else:
+    #             mean = task_mean
+    #             cov = task_cov
+    #         mean_over_classes.append(mean)
+    #         cov_over_classes.append(cov)
+
+    #     mean_over_classes = torch.stack(mean_over_classes)
+    #     shared_cov = torch.stack(cov_over_classes).mean(dim=0)
+
+    #     return mean_over_classes, shared_cov, task_mean, task_cov
+
