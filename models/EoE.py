@@ -415,6 +415,10 @@ class EoE(nn.Module):
                 numerator_list = []
                 for expert in self.expert_distribution:
                     class_mean = expert["class_mean"]
+                    print(class_mean)
+                    print(anchor_hidden_states)
+                    print(class_mean.shape)
+                    print(anchor_hidden_states.shape)
                     numerator_list.append(torch.exp(torch.dot(anchor_hidden_states, class_mean) / self.tau))
                 # numerator = torch.sum(torch.stack(numerator_list))
                 
