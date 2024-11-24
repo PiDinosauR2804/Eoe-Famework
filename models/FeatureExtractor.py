@@ -142,7 +142,9 @@ class PeftFeatureExtractor(nn.Module):
         elif self.peft_type is not None and indices is not None:
             if self.peft_type == "lora":
                 print("3")
+                print(indices[0])
                 self.load_adapter(indices[0])
+                print("3.5")
                 outputs = self.peft_bert(
                     input_ids,
                     attention_mask=attention_mask,

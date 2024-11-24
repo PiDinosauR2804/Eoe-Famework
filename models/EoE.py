@@ -153,12 +153,12 @@ class EoE(nn.Module):
         self.feature_extractor.add_adapter(self.num_tasks)
 
         # calculate distribution for each class with all expert model
-        self.expert_distribution.append({
-            "class_mean": [torch.zeros(self.class_per_task, self.query_size).to(self.device) for _ in
-                           range(self.num_tasks)],
-            "accumulate_cov": torch.zeros(self.query_size, self.query_size),
-            "cov_inv": torch.ones(self.query_size, self.query_size),
-        })
+        # self.expert_distribution.append({
+        #     "class_mean": [torch.zeros(self.class_per_task, self.query_size).to(self.device) for _ in
+        #                    range(self.num_tasks)],
+        #     "accumulate_cov": torch.zeros(self.query_size, self.query_size),
+        #     "cov_inv": torch.ones(self.query_size, self.query_size),
+        # })
 
     def save_classifier(self, idx, save_dir):
         state_dict = self.classifier[idx].state_dict()
