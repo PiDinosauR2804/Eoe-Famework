@@ -5,6 +5,10 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
+
+import re
+import string
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -79,8 +83,9 @@ class EoE(nn.Module):
         descriptions = generator(prompt, max_length=50, num_return_sequences=1)
         
         # Lưu mô tả nhãn vào label_description
-        self.label_description_ids[label] = [self.preprocess_desciption(desc['generated_text'].replace(prompt, '').strip(), tokenizer) for desc in descriptions]
-        self.label_description[label] = [desc['generated_text'].replace(prompt, '').strip() for desc in descriptions]
+        
+        self.label_description[label] = [self.preprocess_text(desc['generated_text'].replace(prompt, '').strip()) for desc in descriptions]
+        self.label_description_ids[label] = [self.preprocess_desciption(desc) for desc in self.label_description[label]]
 
     def generate_description_from_file(self, label, dataset_name, tokenizer):
         if dataset_name.lower() == 'fewrel':
@@ -92,10 +97,18 @@ class EoE(nn.Module):
         # self.label_description_ids[label] = [self.preprocess_desciption(desc, tokenizer) for desc in data[label]]
         # self.label_description[label] = [desc for desc in data[label]]
         
-        self.label_description_ids[label] = [self.preprocess_desciption(data[label][-1], tokenizer)]
+        
+        self.label_description_ids[label] = [self.preprocess_tokenize_desciption(data[label][-1], tokenizer)]
         self.label_description[label] = [data[label][-1]]
         
-    def preprocess_desciption(self, raw_text, tokenizer):
+    def preprocess_text(text):
+        text = text.lower()
+        text = re.sub(r'[^a-zA-Z0-9.,?!()\s]', '', text)
+        text = text.strip()
+        
+        return text    
+        
+    def preprocess_tokenize_desciption(self, raw_text, tokenizer):
         result = tokenizer(raw_text)
         return result['input_ids']
         
@@ -273,18 +286,10 @@ class EoE(nn.Module):
         else:
             if "return_hidden_states" in kwargs and kwargs["return_hidden_states"]:
                 # input task idx 0-9 -1:bert
-                if kwargs["task_idx"] == -1:  # origin bert
-                    indices = None
-                    use_origin = True
-                    kwargs.update({"extract_mode": "entity"})
-                elif kwargs["task_idx"] == 0:  # first task model
-                    indices = None
-                    use_origin = False
-                else:
-                    indices = [kwargs["task_idx"]] * batch_size
-                    use_origin = False
+                kwargs.update({"extract_mode": "cls"})
                 hidden_states = self.feature_extractor(
-                    input_ids=input_ids if kwargs["task_idx"] != -1 else kwargs["input_ids_without_marker"],
+                    input_ids=input_ids,
+                    attention_mask=(input_ids!=0),
                     indices=indices,
                     use_origin=use_origin,
                     **kwargs
@@ -292,6 +297,27 @@ class EoE(nn.Module):
                 if "extract_mode" in kwargs:
                     del kwargs["extract_mode"]
                 return hidden_states
+            # if "return_hidden_states" in kwargs and kwargs["return_hidden_states"]:
+            #     # input task idx 0-9 -1:bert
+            #     if kwargs["task_idx"] == -1:  # origin bert
+            #         indices = None
+            #         use_origin = True
+            #         kwargs.update({"extract_mode": "entity"})
+            #     elif kwargs["task_idx"] == 0:  # first task model
+            #         indices = None
+            #         use_origin = False
+            #     else:
+            #         indices = [kwargs["task_idx"]] * batch_size
+            #         use_origin = False
+            #     hidden_states = self.feature_extractor(
+            #         input_ids=input_ids if kwargs["task_idx"] != -1 else kwargs["input_ids_without_marker"],
+            #         indices=indices,
+            #         use_origin=use_origin,
+            #         **kwargs
+            #     )
+            #     if "extract_mode" in kwargs:
+            #         del kwargs["extract_mode"]
+            #     return hidden_states
 
             all_score_over_task = []
             all_score_over_class = []
@@ -400,6 +426,7 @@ class EoE(nn.Module):
             description_ids_list = {k: v for k, v in kwargs.items() if k.startswith('description_ids_')}
 
             for k, v in description_ids_list.items():
+                
                 description_hidden_states = self.feature_extractor(
                     input_ids=v,
                     attention_mask=(v != 0),
@@ -407,7 +434,7 @@ class EoE(nn.Module):
                     extract_mode="cls",
                     **kwargs
                 )
-                info_nce_loss_value = self.info_nce_loss(anchor_hidden_states, description_hidden_states)
+                # info_nce_loss_value = self.info_nce_loss(anchor_hidden_states, description_hidden_states)
                 
                 # contrastive regularization Loss
                 
@@ -432,7 +459,7 @@ class EoE(nn.Module):
                     log_term = torch.log(numerator / denominator)
                     loss += log_term
                     
-                loss += info_nce_loss_value            
+                # loss += info_nce_loss_value            
 
         # logits = logits[:, :self.class_per_task]
         # preds = logits.max(dim=-1)[1] + self.class_per_task * indices
