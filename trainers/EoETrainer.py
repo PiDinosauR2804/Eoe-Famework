@@ -47,11 +47,12 @@ class EoETrainer(BaseTrainer):
             logger.info(f"***** Task-{task_idx + 1} *****")
             logger.info(f"Current classes: {' '.join(cur_labels)}")
             for cur_label in cur_labels:
-                model.generate_description_from_file(cur_label, self.args.dataset_name, tokenizer)
+                print("hehe")
+                model.generate_description(cur_label, self.args.dataset_name, tokenizer)
             pool = model.get_description_ids(cur_labels)
             
             train_data = data.filter_and_add_desciption(cur_labels, pool) 
-            # train_data = data.filter(cur_labels, "train") 
+            train_data_old = data.filter(cur_labels, "train") 
             
             sample = train_data[0]
             print("Anchor Sample:")
@@ -60,6 +61,7 @@ class EoETrainer(BaseTrainer):
             
             num_train_labels = len(cur_labels)
             train_dataset = BaseDataset(train_data)
+            train_dataset_old = BaseDataset(train_data_old)
             
             # for key, value in pool.items():
             #     print(f"  {key}: {value}") 
@@ -102,7 +104,7 @@ class EoETrainer(BaseTrainer):
                 save=True,
             )
 
-            self.statistic(model, train_dataset, default_data_collator)
+            self.statistic(model, train_dataset_old, default_data_collator)
 
             cur_test_data = data.filter(cur_labels, 'test')
             history_test_data = data.filter(seen_labels, 'test')

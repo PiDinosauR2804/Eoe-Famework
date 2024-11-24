@@ -72,6 +72,8 @@ class EoE(nn.Module):
         
         prompt = f"Describe the label '{label_name}' in a simple and detailed way: "
         descriptions = generator(prompt, max_length=50, num_return_sequences=3)
+        for description in descriptions:
+            print(description)
         
         # Lưu mô tả nhãn vào label_description
         self.label_description_ids[label] = [self.preprocess_desciption(desc['generated_text'].replace(prompt, '').strip()) for desc in descriptions]

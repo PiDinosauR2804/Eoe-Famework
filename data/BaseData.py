@@ -183,9 +183,9 @@ class BaseData:
                     'object_ed': anchor['object_ed'],
                 }
                 
-                for idx, description in enumerate(descriptions):
+                for idx, pool in enumerate(pools):
                     ins.update({
-                        f'description_ids_{idx}': description
+                        f'description_ids_{idx}': pool
                     })
                 sub_res.append(ins)
             res += sub_res
