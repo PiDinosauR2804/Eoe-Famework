@@ -130,23 +130,16 @@ class EoE(nn.Module):
         # new_classifier = nn.Linear(self.classifier_hidden_size, num_labels, device=self.device)
         
         new_classifier_only_bert = nn.Linear(self.classifier_hidden_size, new_output_size, device=self.device)
-        
-        with torch.no_grad():
-        # Copy old weights to the new classifier
-            new_classifier.weight[:self.num_old_labels, :] = self.classifier.weight
-            new_classifier.bias[:self.num_old_labels] = self.classifier.bias
-            
-            new_classifier_only_bert.weight[:self.num_old_labels, :] = self.classifier_only_bert.weight
-            new_classifier_only_bert.bias[:self.num_old_labels] = self.classifier_only_bert.bias
-
-            # Initialize the new weights for the additional labels
-            nn.init.kaiming_uniform_(new_classifier.weight[self.num_old_labels:, :], a=math.sqrt(5))
-            fan_in, _ = nn.init._calculate_fan_in_and_fan_out(new_classifier.weight[self.num_old_labels:, :])
-            bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
-            nn.init.uniform_(new_classifier.bias[self.num_old_labels:], -bound, bound)
-            
-            nn.init.kaiming_uniform_(new_classifier_only_bert.weight[self.num_old_labels:, :], a=math.sqrt(5))
-            nn.init.uniform_(new_classifier_only_bert.bias[self.num_old_labels:], -bound, bound)
+        print("-------------------------------")
+        print(self.num_tasks)
+        # if self.num_tasks > 0:
+        #     with torch.no_grad():
+        #         # Copy old weights to the new classifier
+        #         new_classifier.weight[:self.num_old_labels, :] = self.classifier.weight
+        #         new_classifier.bias[:self.num_old_labels] = self.classifier.bias
+                
+        #         new_classifier_only_bert.weight[:self.num_old_labels, :] = self.classifier_only_bert.weight
+        #         new_classifier_only_bert.bias[:self.num_old_labels] = self.classifier_only_bert.bias
         
         self.classifier.append(new_classifier)
         
