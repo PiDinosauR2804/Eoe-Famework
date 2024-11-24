@@ -307,9 +307,9 @@ class EoETrainer(BaseTrainer):
         preds = []
         pred_indices = []
         gold_indices = []
-        expert_task_preds = []
-        expert_class_preds = []
-        hits = 0
+        # expert_task_preds = []
+        # expert_class_preds = []
+        # hits = 0
         model.eval()
         for step, inputs in enumerate(eval_dataloader):
 
@@ -328,8 +328,8 @@ class EoETrainer(BaseTrainer):
             golds.extend(labels)
             preds.extend(predicts)
 
-            expert_task_preds.append(outputs.expert_task_preds)
-            expert_class_preds.append(outputs.expert_class_preds)
+            # expert_task_preds.append(outputs.expert_task_preds)
+            # expert_class_preds.append(outputs.expert_class_preds)
 
             progress_bar.update(1)
         progress_bar.close()
@@ -341,15 +341,15 @@ class EoETrainer(BaseTrainer):
         logger.info("Hit Acc {}".format(hit_acc))
 
         if not oracle:
-            expert_task_preds = torch.cat(expert_task_preds, dim=0).tolist()
-            expert_class_preds = torch.cat(expert_class_preds, dim=0).tolist()
+            # expert_task_preds = torch.cat(expert_task_preds, dim=0).tolist()
+            # expert_class_preds = torch.cat(expert_class_preds, dim=0).tolist()
             save_data = {
                 "preds": preds,
                 "golds": golds,
                 "pred_indices": pred_indices,
                 "gold_indices": gold_indices,
-                "expert_task_preds": expert_task_preds,
-                "expert_class_preds": expert_class_preds,
+                # "expert_task_preds": expert_task_preds,
+                # "expert_class_preds": expert_class_preds,
             }
             # save information
             save_file = f"{self.cur_seed}_{self.task_idx}.pickle"

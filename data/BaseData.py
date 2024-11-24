@@ -19,7 +19,7 @@ class BaseHidden:
         res = []
         data = np.random.multivariate_normal(mean, covariance, num)
         for sample in data:
-            ins ={
+            ins = {
                 'inputs_ids':sample
             }
             res.append(ins)
