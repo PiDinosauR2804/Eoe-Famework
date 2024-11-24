@@ -108,8 +108,8 @@ class EoETrainer(BaseTrainer):
             cur_test_data = data.filter(cur_labels, 'test')
             history_test_data = data.filter(seen_labels, 'test')
 
-            cur_test_dataset = BaseDataset(cur_test_data)
-            history_test_dataset = BaseDataset(history_test_data)
+            # cur_test_dataset = BaseDataset(cur_test_data)
+            # history_test_dataset = BaseDataset(history_test_data)
 
             # cur_acc, cur_hit = self.eval(
             #     model=model,
