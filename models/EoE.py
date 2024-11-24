@@ -1,4 +1,5 @@
 import copy
+import math
 import json
 from collections import Counter
 from dataclasses import dataclass
@@ -22,7 +23,7 @@ class EoE(nn.Module):
         self.peft_type = config.peft_type
         self.query_mode = config.query_mode
         self.max_expert = config.max_expert if config.max_expert != -1 else float("inf")
-
+        self.tau = 0.8
         self.feature_extractor = PeftFeatureExtractor(config)
         
         self.num_old_labels = 0
@@ -53,21 +54,28 @@ class EoE(nn.Module):
         self.label_description = {}
         self.label_description_ids = {}
         self.classifier = nn.ParameterList()
+        self.classifier_only_bert = nn.ParameterList()
         self.triplet_loss_fn = nn.TripletMarginLoss(margin=1.0, p=2)
 
-    def generate_description(self, label, tokenizer):
+    def generate_description(self, label, dataset_name, tokenizer):
+        if dataset_name.lower() == 'fewrel':
+            file_path = 'datasets/FewRel/pid2name.json'
+            with open(file_path, 'r', encoding='utf-8') as json_file:
+                data = json.load(json_file)
+        
+        label_name = data[label][0]
         model_name = "gpt2"  # Bạn có thể thay thế bằng một mô hình ngôn ngữ mã nguồn mở khác
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         model = AutoModelForCausalLM.from_pretrained(model_name)
         
         generator = pipeline("text-generation", model=model, tokenizer=tokenizer)
         
-        prompt = f"Describe the label '{label}' in a simple and detailed way: "
+        prompt = f"Describe the label '{label_name}' in a simple and detailed way: "
         descriptions = generator(prompt, max_length=50, num_return_sequences=3)
         
         # Lưu mô tả nhãn vào label_description
-        self.label_description_ids[label] = [self.preprocess_desciption(desc['generated_text']) for desc in descriptions]
-        self.label_description[label] = [desc['generated_text'] for desc in descriptions]
+        self.label_description_ids[label] = [self.preprocess_desciption(desc['generated_text'].replace(prompt, '').strip()) for desc in descriptions]
+        self.label_description[label] = [desc['generated_text'].replace(prompt, '').strip() for desc in descriptions]
 
     def generate_description_from_file(self, label, dataset_name, tokenizer):
         if dataset_name.lower() == 'fewrel':
@@ -113,8 +121,36 @@ class EoE(nn.Module):
         # freeze previous classifier and add new classifier for new task
         for param in self.classifier.parameters():
             param.requires_grad = False
-        new_classifier = nn.Linear(self.classifier_hidden_size, num_labels, device=self.device)
+            
+        for param in self.classifier_only_bert.parameters():
+            param.requires_grad = False
+            
+        new_output_size = self.num_old_labels + num_labels
+        new_classifier = nn.Linear(self.classifier_hidden_size, new_output_size, device=self.device)
+        # new_classifier = nn.Linear(self.classifier_hidden_size, num_labels, device=self.device)
+        
+        new_classifier_only_bert = nn.Linear(self.classifier_hidden_size, new_output_size, device=self.device)
+        
+        with torch.no_grad():
+        # Copy old weights to the new classifier
+            new_classifier.weight[:self.num_old_labels, :] = self.classifier.weight
+            new_classifier.bias[:self.num_old_labels] = self.classifier.bias
+            
+            new_classifier_only_bert.weight[:self.num_old_labels, :] = self.classifier_only_bert.weight
+            new_classifier_only_bert.bias[:self.num_old_labels] = self.classifier_only_bert.bias
+
+            # Initialize the new weights for the additional labels
+            nn.init.kaiming_uniform_(new_classifier.weight[self.num_old_labels:, :], a=math.sqrt(5))
+            fan_in, _ = nn.init._calculate_fan_in_and_fan_out(new_classifier.weight[self.num_old_labels:, :])
+            bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
+            nn.init.uniform_(new_classifier.bias[self.num_old_labels:], -bound, bound)
+            
+            nn.init.kaiming_uniform_(new_classifier_only_bert.weight[self.num_old_labels:, :], a=math.sqrt(5))
+            nn.init.uniform_(new_classifier_only_bert.bias[self.num_old_labels:], -bound, bound)
+        
         self.classifier.append(new_classifier)
+        
+        self.classifier_only_bert.append(new_classifier_only_bert)
 
         self.feature_extractor.add_adapter(self.num_tasks)
 
@@ -135,6 +171,16 @@ class EoE(nn.Module):
     def load_classifier(self, idx, save_dir):
         ckpt = torch.load(f"{save_dir}/classifier-{idx}.pth")
         self.classifier[idx].load_state_dict(ckpt["classifier"])
+        
+    def save_classifier_only_bert(self, idx, save_dir):
+        state_dict = self.classifier_only_bert[idx].state_dict()
+        torch.save({
+            f"classifier_only_bert": state_dict
+        }, f"{save_dir}/classifier_only_bert-{idx}.pth")
+
+    def load_classifier_only_bert(self, idx, save_dir):
+        ckpt = torch.load(f"{save_dir}/classifier_only_bert-{idx}.pth")
+        self.classifier_only_bert[idx].load_state_dict(ckpt["classifier"])
 
     def new_statistic(self, mean, cov, task_mean, task_cov, expert_id=0):
         expert_id = self.shift_expert_id(expert_id)
@@ -212,7 +258,7 @@ class EoE(nn.Module):
         loss = F.cross_entropy(logits, labels)
         return loss
 
-    def forward(self, input_ids, attention_mask=None, positive_input_ids=None, negative_input_ids=None, labels=None, oracle=False, descriptions_ids=None, **kwargs):
+    def forward(self, input_ids, attention_mask=None, labels=None, oracle=False, **kwargs):
 
         batch_size, _ = input_ids.shape
         if attention_mask is None:
@@ -335,11 +381,21 @@ class EoE(nn.Module):
             **kwargs
         )
         logits = self.classifier[self.num_tasks](hidden_states)
+        
+        # else:
+        #     hidden_states = self.feature_extractor(
+        #         input_ids=input_ids,
+        #         attention_mask=attention_mask,
+        #         indices=indices,
+        #         attribute="anchor",
+        #         use_origin=True,
+        #         **kwargs
+        #     )
+        #     logits = self.classifier_only_bert[self.num_tasks](hidden_states)
 
         loss = None
-        triplet_loss = 0.0
         if self.training:
-            offset_label = labels - self.num_old_labels
+            offset_label = labels
             loss = F.cross_entropy(logits, offset_label)
             
             anchor_hidden_states = hidden_states
@@ -348,49 +404,46 @@ class EoE(nn.Module):
             # print(input_ids.size())
             # print(positive_input_ids.size())
             # print(negative_input_ids.size())
-            
-            if positive_input_ids is not None and negative_input_ids is not None:
+            if use_origin is None:
+                description_ids_list = {k: v for k, v in kwargs.items() if k.startswith('description_ids_')}
 
-                positve_attention_mask = positive_input_ids != 0
-                negative_attention_mask = negative_input_ids != 0
-                
-                # print(f"negative_attention_mask size: {negative_attention_mask.size()}")
-                # print(f"positve_attention_mask size: {positve_attention_mask.size()}")
-                
-                positive_hidden_states = self.feature_extractor(
-                    input_ids=positive_input_ids,
-                    attention_mask=positve_attention_mask,
-                    indices=indices,
-                    attribute="positive",
-                    **kwargs
-                )
-                negative_hidden_states = self.feature_extractor(
-                    input_ids=negative_input_ids,
-                    attention_mask=negative_attention_mask,
-                    indices=indices,
-                    attribute="negative",
-                    **kwargs
-                )
-                # print("Second------------------")
-                # print(hidden_states.size())
-                # print(positive_hidden_states.size())
-                # print(negative_hidden_states.size())
-                
-                triplet_loss = self.triplet_loss_fn(anchor_hidden_states, positive_hidden_states, negative_hidden_states)
-                loss += triplet_loss
-            if descriptions_ids is not None:
-                description_hidden_states = self.feature_extractor(
-                    input_ids=descriptions_ids,
-                    attention_mask=(descriptions_ids != 0),
-                    indices=indices,
-                    extract_mode="cls",
-                    **kwargs
-                )
-                info_nce_loss_value = self.info_nce_loss(anchor_hidden_states, description_hidden_states, negative_hidden_states)
-                loss += info_nce_loss_value
+                for k, v in description_ids_list.items():
+                    description_hidden_states = self.feature_extractor(
+                        input_ids=v,
+                        attention_mask=(v != 0),
+                        indices=indices,
+                        extract_mode="cls",
+                        **kwargs
+                    )
+                    info_nce_loss_value = self.info_nce_loss(anchor_hidden_states, description_hidden_states)
+                    
+                    # contrastive regularization Loss
+                    
+                    # Compute numerator: exp(h · μ_c / τ)
+                    numerator_list = []
+                    for expert in self.expert_distribution:
+                        class_mean = expert["class_mean"]
+                        numerator_list.append(torch.exp(torch.dot(anchor_hidden_states, class_mean) / self.tau))
+                    # numerator = torch.sum(torch.stack(numerator_list))
+                    
+                    # Compute denominator: sum(exp(h · h' / τ)) + sum(exp(h · μ_c / τ))
+                    denominator_list = []
+                    denominator_list.append(torch.exp(torch.dot(anchor_hidden_states, description_hidden_states) / self.tau))
+                    denominator_list.extend(numerator_list)  # Add numerator terms for μ_c
+                    denominator = torch.sum(torch.stack(denominator_list))
 
-        logits = logits[:, :self.class_per_task]
-        preds = logits.max(dim=-1)[1] + self.class_per_task * indices
+                    # Compute log term
+                    for numerator in numerator_list:
+                        log_term = torch.log(numerator / denominator)
+                        loss += log_term
+                        
+                    loss += info_nce_loss_value            
+
+        # logits = logits[:, :self.class_per_task]
+        # preds = logits.max(dim=-1)[1] + self.class_per_task * indices
+        
+        logits = logits[:, :]
+        preds = logits.max(dim=-1)[1]
                 
         indices = indices.tolist() if isinstance(indices, torch.Tensor) else indices
         return ExpertOutput(

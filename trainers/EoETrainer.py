@@ -50,15 +50,13 @@ class EoETrainer(BaseTrainer):
                 model.generate_description_from_file(cur_label, self.args.dataset_name, tokenizer)
             pool = model.get_description_ids(cur_labels)
             
-            if self.args.contrastive_learning:
-                train_data = data.filter_and_contrastive_learning_and_add_desciption(cur_labels, pool) 
-            else:
-                train_data = data.filter(cur_labels, "train") 
+            train_data = data.filter_and_add_desciption(cur_labels, pool) 
+            # train_data = data.filter(cur_labels, "train") 
             
             sample = train_data[0]
-            # print("Anchor Sample:")
-            # for key, value in sample.items():
-            #     print(f"  {key}: {value}") 
+            print("Anchor Sample:")
+            for key, value in sample.items():
+                print(f"  {key}: {value}") 
             
             num_train_labels = len(cur_labels)
             train_dataset = BaseDataset(train_data)
@@ -69,15 +67,15 @@ class EoETrainer(BaseTrainer):
             # aug_train_data, num_train_labels = relation_data_augmentation(
             #         copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
             #     )   
-            if self.args.contrastive_learning:
-                aug_train_data, num_train_labels = relation_data_augmentation_and_contrastive_learning(
-                    copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
-                )                
-            else:
-                aug_train_data, num_train_labels = relation_data_augmentation(
-                    copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
-                )                
-            aug_train_dataset = BaseDataset(aug_train_data)
+            # if self.args.contrastive_learning:
+            #     aug_train_data, num_train_labels = relation_data_augmentation_and_contrastive_learning(
+            #         copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
+            #     )                
+            # else:
+            #     aug_train_data, num_train_labels = relation_data_augmentation(
+            #         copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
+            #     )                
+            # aug_train_dataset = BaseDataset(aug_train_data)
             
             model.new_task(num_train_labels)
 
@@ -88,7 +86,7 @@ class EoETrainer(BaseTrainer):
             else:
                 self.train(
                     model=model,
-                    train_dataset=aug_train_dataset,
+                    train_dataset=train_dataset,
                     data_collator=default_data_collator
                 )
 
@@ -150,117 +148,6 @@ class EoETrainer(BaseTrainer):
             "total_hit": all_total_hit,
         }
         
-    def run_only_eval(self, data, model, tokenizer, label_order, seed=None):
-        if seed is not None:
-            set_seed(seed)
-            self.cur_seed = seed
-        default_data_collator = CustomCollatorWithPadding(tokenizer)
-
-        seen_labels = []
-        all_cur_acc = []
-        all_total_acc = []
-        all_total_hit = []
-        marker_ids = tuple([tokenizer.convert_tokens_to_ids(c) for c in self.args.additional_special_tokens])
-        logger.info(f"marker ids: {marker_ids}")
-        for task_idx in range(self.args.num_tasks):
-            self.task_idx = task_idx
-            cur_labels = [data.label_list[c] for c in label_order[task_idx]]
-            data.add_labels(cur_labels, task_idx)
-            seen_labels += cur_labels
-
-            logger.info(f"***** Task-{task_idx + 1} *****")
-            logger.info(f"Current classes: {' '.join(cur_labels)}")
-
-            train_data = data.filter(cur_labels, "train")
-            
-            
-            train_dataset = BaseDataset(train_data)
-            num_train_labels = len(cur_labels)
-            aug_train_data, num_train_labels = relation_data_augmentation(
-                copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
-            )
-            aug_train_dataset = BaseDataset(aug_train_data)
-            model.new_task(num_train_labels)
-
-            if self.task_idx == 0:
-                expert_model = f"./ckpt/{self.args.dataset_name}_{seed}_{self.args.augment_type}.pth"
-                model.load_expert_model(expert_model)
-                logger.info(f"load first task model from {expert_model}")
-            else:
-                self.train(
-                    model=model,
-                    train_dataset=aug_train_dataset,
-                    data_collator=default_data_collator
-                )
-
-            # os.makedirs(f"./ckpt/{self.args.dataset_name}-{seed}-{self.args.augment_type}", exist_ok=True)
-            # model.save_classifier(
-            #     idx=self.task_idx,
-            #     save_dir=f"./ckpt/{self.args.dataset_name}-{seed}-{self.args.augment_type}",
-            # )
-            
-            model.load_classifier(
-                idx=self.task_idx,
-                save_dir=f"./ckpt/{self.args.dataset_name}-{seed}-{self.args.augment_type}",
-            )
-
-            # model.feature_extractor.save_and_load_all_adapters(
-            #     self.task_idx,
-            #     save_dir=f"./ckpt/{self.args.dataset_name}-{seed}-{self.args.augment_type}",
-            #     save=True,
-            # )
-            
-            model.feature_extractor.save_and_load_all_adapters(
-                self.task_idx,
-                save_dir=f"./ckpt/{self.args.dataset_name}-{seed}-{self.args.augment_type}",
-                save=False,
-            )
-
-            self.statistic(model, train_dataset, default_data_collator)
-
-            cur_test_data = data.filter(cur_labels, 'test')
-            history_test_data = data.filter(seen_labels, 'test')
-
-            cur_test_dataset = BaseDataset(cur_test_data)
-            history_test_dataset = BaseDataset(history_test_data)
-
-            cur_acc, cur_hit = self.eval(
-                model=model,
-                eval_dataset=cur_test_dataset,
-                data_collator=default_data_collator,
-                seen_labels=seen_labels,
-                label2task_id=copy.deepcopy(data.label2task_id),
-                oracle=True,
-            )
-
-            total_acc, total_hit = self.eval(
-                model=model,
-                eval_dataset=history_test_dataset,
-                data_collator=default_data_collator,
-                seen_labels=seen_labels,
-                label2task_id=copy.deepcopy(data.label2task_id),
-            )
-
-            all_cur_acc.append(cur_acc)
-            all_total_acc.append(total_acc)
-            all_total_hit.append(total_hit)
-
-        # save distribution
-        save_data = {
-            "distribution": model.expert_distribution,
-            "seen_labels": seen_labels,
-            "label2id": data.label2id,
-        }
-        save_file = f"{self.cur_seed}_distribution.pickle"
-        save_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
-        with open(save_dir + "/" + save_file, 'wb') as file:
-            pickle.dump(save_data, file)
-
-        return {
-            "cur_acc": all_cur_acc,
-            "total_acc": all_total_acc,
-            "total_hit": all_total_hit,
-        }
 
     def train(self, model, train_dataset, data_collator):
         train_dataloader = DataLoader(
@@ -310,6 +197,16 @@ class EoETrainer(BaseTrainer):
                 nn.utils.clip_grad_norm_(model.parameters(), self.args.max_grad_norm)
 
                 self.optimizer.step()
+                
+                # self.optimizer.zero_grad()
+
+                # inputs['use_origin'] = True
+                # outputs = model(**inputs)
+                # loss = outputs.loss
+                # loss.backward()
+                # nn.utils.clip_grad_norm_(model.parameters(), self.args.max_grad_norm)
+
+                # self.optimizer.step()
 
                 progress_bar.update(1)
                 progress_bar.set_postfix({"Loss": loss.item()})

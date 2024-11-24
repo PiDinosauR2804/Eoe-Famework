@@ -149,6 +149,49 @@ class BaseData:
         for idx in range(len(res)):
             res[idx]["labels"] = self.label2id[res[idx]["labels"]]
         return res
+    
+    def filter_and_add_desciption(self, labels, descriptions):
+        if not isinstance(labels, list):
+            labels = [labels]
+        # labels_label2id = [self.label2id[label_] for label_ in labels]
+        print(labels)
+        res = []
+        for label in labels:
+            pools = descriptions[label]
+            sub_res = []
+            for anchor in self.train_data[label]:
+                # print(label)
+                # if idxxx:
+                #     print("-------")
+                # for key, value in anchor.items():
+                #     print(f"  {key}: {value}")
+                    
+                cur_label = anchor["labels"]
+                if cur_label in ['P26', 'P3373', 'per:siblings', 'org:alternate_names', 'per:spouse',
+                                        'per:alternate_names', 'per:other_family']:
+                    continue
+                
+                ins = {
+                    'input_ids': anchor['input_ids'],  # default: add marker to the head entity and tail entity
+                    'subject_marker_st': anchor['subject_marker_st'],
+                    'object_marker_st': anchor['object_marker_st'],
+                    'labels': anchor['labels'],
+                    'input_ids_without_marker': anchor['input_ids_without_marker'],
+                    'subject_st': anchor['subject_st'],
+                    'subject_ed': anchor['subject_ed'],
+                    'object_st': anchor['object_st'],
+                    'object_ed': anchor['object_ed'],
+                }
+                
+                for idx, description in enumerate(descriptions):
+                    ins.update({
+                        f'description_ids_{idx}': description
+                    })
+                sub_res.append(ins)
+            res += sub_res
+        for idx in range(len(res)):
+            res[idx]["labels"] = self.label2id[res[idx]["labels"]]
+        return res
 
 
 class BaseDataset(Dataset):
