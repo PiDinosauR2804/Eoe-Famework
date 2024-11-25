@@ -21,7 +21,8 @@ class BaseHidden:
         for sample in data:
             ins = {
                 'input_ids':sample.tolist(),
-                'labels': labels
+                'labels': labels,
+                'float_check': True,
             }
             res.append(ins)
         return res

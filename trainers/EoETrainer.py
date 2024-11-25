@@ -262,8 +262,14 @@ class EoETrainer(BaseTrainer):
 
                 inputs = {k: v.to(self.args.device) for k, v in inputs.items()}
                 inputs.update({"mlp2": True})
-                for k, v in inputs.items():
-                    print(f"  {k}: {v}") 
+                if step <2:
+                    formatted_tensor = inputs['input_ids'].cpu().numpy()
+                    formatted_display = "\n".join(
+                        ["[" + ", ".join(f"{x:.4f}" for x in row) + "]" for row in formatted_tensor]
+                    )
+
+                    # Print the formatted tensor
+                    print(formatted_display)
 
                 outputs = model(**inputs)
                 loss = outputs.loss
@@ -275,9 +281,6 @@ class EoETrainer(BaseTrainer):
 
                 progress_bar.update(1)
                 progress_bar.set_postfix({"Loss": loss.item()})
-
-        print("New Classifier After")
-        print(model.classifier_only_bert[-1].weight)
         
         progress_bar.close()
 
