@@ -276,6 +276,9 @@ class EoETrainer(BaseTrainer):
                 progress_bar.update(1)
                 progress_bar.set_postfix({"Loss": loss.item()})
 
+        print("New Classifier After")
+        print(model.classifier_only_bert[-1].weight)
+        
         progress_bar.close()
 
     @torch.no_grad()

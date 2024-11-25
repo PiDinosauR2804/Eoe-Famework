@@ -152,6 +152,10 @@ class EoE(nn.Module):
         new_classifier_only_bert = nn.Linear(self.classifier_hidden_size, new_output_size, device=self.device)
         print("-------------------------------")
         print(self.num_tasks)
+        print("Old Classifier")
+        print(self.classifier[self.num_tasks-1].weight)
+        print("New Classifier")
+        print(new_classifier_only_bert.weight)
         
         if self.num_tasks > 0:
             with torch.no_grad():
@@ -163,6 +167,8 @@ class EoE(nn.Module):
                 new_classifier_only_bert.weight[:self.num_old_labels, :] = self.classifier_only_bert[self.num_tasks-1].weight
                 new_classifier_only_bert.bias[:self.num_old_labels] = self.classifier_only_bert[self.num_tasks-1].bias
         
+        print("New Classifier After")
+        print(new_classifier_only_bert.weight)
         self.classifier.append(new_classifier)
         
         self.classifier_only_bert.append(new_classifier_only_bert)
