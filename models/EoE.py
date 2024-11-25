@@ -65,9 +65,6 @@ class EoE(nn.Module):
         self.classifier = nn.ParameterList()
         self.classifier_only_bert = nn.ParameterList()
         
-        # self.classifier = [[nn.ParameterList()]]
-        # self.classifier_only_bert = [[nn.ParameterList()]]
-        
         self.triplet_loss_fn = nn.TripletMarginLoss(margin=1.0, p=2)
 
     def generate_description(self, label, dataset_name, tokenizer):
@@ -155,14 +152,16 @@ class EoE(nn.Module):
         new_classifier_only_bert = nn.Linear(self.classifier_hidden_size, new_output_size, device=self.device)
         print("-------------------------------")
         print(self.num_tasks)
-        # if self.num_tasks > 0:
-        #     with torch.no_grad():
-        #         # Copy old weights to the new classifier
-        #         new_classifier.weight[:self.num_old_labels, :] = self.classifier.weight
-        #         new_classifier.bias[:self.num_old_labels] = self.classifier.bias
+        
+        if self.num_tasks > 0:
+            with torch.no_grad():
+                # Copy old weights to the new classifier
                 
-        #         new_classifier_only_bert.weight[:self.num_old_labels, :] = self.classifier_only_bert.weight
-        #         new_classifier_only_bert.bias[:self.num_old_labels] = self.classifier_only_bert.bias
+                new_classifier.weight[:self.num_old_labels, :] = self.classifier[self.num_tasks-1].weight
+                new_classifier.bias[:self.num_old_labels] = self.classifier[self.num_tasks-1].bias
+                
+                new_classifier_only_bert.weight[:self.num_old_labels, :] = self.classifier_only_bert[self.num_tasks-1].weight
+                new_classifier_only_bert.bias[:self.num_old_labels] = self.classifier_only_bert[self.num_tasks-1].bias
         
         self.classifier.append(new_classifier)
         

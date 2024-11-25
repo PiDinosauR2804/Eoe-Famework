@@ -15,12 +15,13 @@ class BaseHidden:
         self.covariance = covariance
         self.train_data = None
     
-    def generate_data_base_on_means_and_cov(self, mean, covariance, num):
+    def generate_data_base_on_means_and_cov(self, labels, mean, covariance, num):
         res = []
         data = np.random.multivariate_normal(mean, covariance, num)
         for sample in data:
             ins = {
-                'inputs_ids':sample
+                'input_ids':sample.tolist(),
+                'labels': labels
             }
             res.append(ins)
         return res
@@ -28,9 +29,10 @@ class BaseHidden:
     def generate_hidden_data(self):
         res = []
         for idx in range(self.num_class):
+            labels = idx
             mean = self.means[idx].cpu().numpy()
             cov = self.covariance.cpu().numpy()
-            samples = self.generate_data_base_on_means_and_cov(mean, cov, 160)
+            samples = self.generate_data_base_on_means_and_cov(labels, mean, cov, 16)
             res.extend(samples)
         return res
             

@@ -86,18 +86,17 @@ class EoETrainer(BaseTrainer):
             baseHidden = BaseHidden(model.num_labels, model.expert_distribution['class_mean'], model.expert_distribution['accumulate_cov'])
             hidden_data = baseHidden.generate_hidden_data()
             hidden_dataset = BaseDataset(hidden_data)
-            
+                        
+            sample = hidden_data[0]
+            print("Anchor Sample:")
+            for key, value in sample.items():
+                print(f"  {key}: {value}") 
+                
             self.train_mlp2(
                 model=model,
                 train_dataset=hidden_dataset,
                 data_collator=default_data_collator
             )
-            
-            sample = hidden_data[0]
-            print("Anchor Sample:")
-            for key, value in sample.items():
-                print(len(value))
-                print(f"  {key}: {value}") 
 
             os.makedirs(f"./ckpt/{self.args.dataset_name}-{seed}-{self.args.augment_type}", exist_ok=True)
             model.save_classifier(
@@ -252,7 +251,7 @@ class EoETrainer(BaseTrainer):
 
         progress_bar = tqdm(range(max_steps))
         for name, param in model.named_parameters():
-            if param.requires_grad and "lora_" in name:
+            if param.requires_grad:
                 print(name)
                 break
 
@@ -263,22 +262,16 @@ class EoETrainer(BaseTrainer):
 
                 inputs = {k: v.to(self.args.device) for k, v in inputs.items()}
                 inputs.update({"mlp2": True})
+                for k, v in inputs.items():
+                    print(f"  {k}: {v}") 
+
                 outputs = model(**inputs)
                 loss = outputs.loss
                 loss.backward()
                 nn.utils.clip_grad_norm_(model.parameters(), self.args.max_grad_norm)
 
                 self.optimizer.step()
-                
-                # self.optimizer.zero_grad()
 
-                # inputs['use_origin'] = True
-                # outputs = model(**inputs)
-                # loss = outputs.loss
-                # loss.backward()
-                # nn.utils.clip_grad_norm_(model.parameters(), self.args.max_grad_norm)
-
-                # self.optimizer.step()
 
                 progress_bar.update(1)
                 progress_bar.set_postfix({"Loss": loss.item()})

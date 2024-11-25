@@ -21,8 +21,10 @@ class CustomCollatorWithPadding:
             else:
                 return batch_data
         max_length = max([len(c) for c in batch_data])
+        print(max_length)
         ans = []
         for ins in batch_data:
+            print(ins)
             ins = ins + [0] * (max_length - len(ins))
             ans.append(ins)
         if self.return_tensors == "pt":
@@ -41,5 +43,7 @@ class CustomCollatorWithPadding:
             #     for kk in range(len(batch[k])):
             #         batch[k][kk] = self.pad_to_same_length(batch[k][kk])  
             # else: 
+            print("-----------------------")
+            print(batch[k])
             batch[k] = self.pad_to_same_length(batch[k])
         return batch
