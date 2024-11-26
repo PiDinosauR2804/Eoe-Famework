@@ -22,7 +22,7 @@ class BaseHidden:
             ins = {
                 'input_ids':sample.tolist(),
                 'labels': labels,
-                'float_check': True,
+                'float_check': 1,
             }
             res.append(ins)
         return res
