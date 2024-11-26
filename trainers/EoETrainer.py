@@ -64,7 +64,7 @@ class EoETrainer(BaseTrainer):
             train_dataset = BaseDataset(train_data)
             train_dataset_old = BaseDataset(train_data_old)     
             
-            if self.task_idx == 0:
+            if self.task_idx != 0:
                 pool_mlp1_term2 = model.get_description_ids(seen_labels)
                 train_data_mlp1_term2 = data.filler_add_old_description(seen_labels, pool_mlp1_term2, 10)
                 train_dataset_mlp1_term2 = BaseDataset(train_data_mlp1_term2)

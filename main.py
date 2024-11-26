@@ -52,6 +52,16 @@ def main(cfg: DictConfig):
         datefmt="%m/%d/%Y %H:%M:%S",
         handlers=[logging.StreamHandler(sys.stdout)],
     )
+    # logging.basicConfig(
+    #     format="%(asctime)s - %(le5velname)s - %(name)s - %(message)s",
+    #     datefmt="%m/%d/%Y %H:%M:%S",
+    #     handlers=[logging.FileHandler("output.log")],
+    # )
+    
+    # log_file = open("output.log", "w")
+
+    # Chuyển hướng stdout và stderr
+    # sys.stdout = log_file
 
     logger.setLevel(logging.INFO)
 

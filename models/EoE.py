@@ -417,7 +417,7 @@ class EoE(nn.Module):
 
         if self.training:
             offset_label = labels
-            loss += F.cross_entropy(logits, offset_label) 
+            loss = F.cross_entropy(logits, offset_label) 
             anchor_hidden_states = hidden_states
             # print("1")
             description_ids_list = {k: v for k, v in kwargs.items() if k.startswith('description_ids_')}
@@ -452,7 +452,7 @@ class EoE(nn.Module):
                 denominator_list.append(torch.exp((anchor_hidden_states * description_hidden_states).sum(dim=1, keepdim=True) / self.tau))
                 denominator_list.extend(numerator_list)  # Add numerator terms for μ_c
                 denominator = torch.sum(torch.stack(denominator_list))
-                print("5")
+                # print("5")
                 # Compute log term
                 log_term = torch.zeros(batch_size, 1, device=self.device)
                 for numerator in numerator_list:
@@ -465,9 +465,9 @@ class EoE(nn.Module):
                 print(self.num_labels)
                 total_log_term += (log_term.mean() / self.num_labels)
             # print("7")
-            loss += (total_log_term / len(description_ids_list))
             print("----@@@@@@@@-------")
             print(total_log_term / len(description_ids_list))
+            loss += (total_log_term / len(description_ids_list)).item()
                             
         logits = logits[:, :]
         preds = logits.max(dim=-1)[1]
