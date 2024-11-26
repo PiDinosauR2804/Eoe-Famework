@@ -17,7 +17,7 @@ class CustomFloatCollatorWithPadding:
     def pad_to_same_length(self, batch_data):
         if isinstance(batch_data[0], int):
             if self.return_tensors == "pt":
-                return torch.FloatType(batch_data)
+                return torch.FloatTensor(batch_data)
             else:
                 return batch_data
         max_length = max([len(c) for c in batch_data])
@@ -26,7 +26,7 @@ class CustomFloatCollatorWithPadding:
             ins = ins + [0] * (max_length - len(ins))
             ans.append(ins)
         if self.return_tensors == "pt":
-            return torch.FloatType(ans)
+            return torch.FloatTensor(ans)
         else:
             return ans
 
