@@ -93,34 +93,32 @@ class EoETrainer(BaseTrainer):
                     data_collator=default_data_collator
                 )
                 
+            # print("3")
+            # print(tokenizer.vocab_size)
+            self.statistic(model, train_dataset_old, default_data_collator)
+            
+            print(model.num_labels)
+            
+            if self.task_idx != 0:
                 self.train(
                     model=model,
                     train_dataset=train_dataset_mlp1_term2,
                     data_collator=default_data_collator
                 )
-            # print("3")
-            # print(tokenizer.vocab_size)
-            self.statistic(model, train_dataset_old, default_data_collator)
-            # print("4")
-            # print(tokenizer.vocab_size)
-            # print(model.expert_distribution['class_mean'])
-            # print(model.expert_distribution['cov_inv'])
-            # print(model.expert_distribution['accumulate_cov'])
-            print(model.num_labels)
-            # baseHidden = BaseHidden(model.num_labels, model.expert_distribution['class_mean'], model.expert_distribution['accumulate_cov'])
-            # hidden_data = baseHidden.generate_hidden_data()
-            # hidden_dataset = BaseDataset(hidden_data)
+            baseHidden = BaseHidden(model.num_labels, model.expert_distribution['class_mean'], model.expert_distribution['accumulate_cov'])
+            hidden_data = baseHidden.generate_hidden_data()
+            hidden_dataset = BaseDataset(hidden_data)
                         
             # sample = hidden_data[0]
             # print("Anchor Sample:")
             # for key, value in sample.items():
             #     print(f"  {key}: {value}") 
                 
-            # self.train_mlp2(
-            #     model=model,
-            #     train_dataset=hidden_dataset,
-            #     data_collator=float_data_collator
-            # )
+            self.train_mlp2(
+                model=model,
+                train_dataset=hidden_dataset,
+                data_collator=float_data_collator
+            )
 
             os.makedirs(f"./ckpt/{self.args.dataset_name}-{seed}-{self.args.augment_type}", exist_ok=True)
             model.save_classifier(

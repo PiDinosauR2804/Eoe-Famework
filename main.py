@@ -63,7 +63,7 @@ def main(cfg: DictConfig):
     #     handlers=[logging.StreamHandler(sys.stdout)],
     # )
     logging.basicConfig(
-        format="%(asctime)s - %(le5velname)s - %(name)s - %(message)s",
+        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
         datefmt="%m/%d/%Y %H:%M:%S",
         handlers=[
             logging.FileHandler("output.log"),  # Ghi log vào file
