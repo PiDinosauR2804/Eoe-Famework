@@ -5,6 +5,8 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Optional, Tuple
 import google.generativeai as genai
+import wandb_logger as logger
+
 
 
 import re
@@ -363,6 +365,8 @@ class EoE(nn.Module):
             logits = logits[:, :]
             preds = logits.max(dim=-1)[1]
             
+            logger.log_metrics({"train/mlp2": loss.item()})
+            
             indices = indices.tolist() if isinstance(indices, torch.Tensor) else indices
             return ExpertOutput(
                 loss=loss,
@@ -405,6 +409,8 @@ class EoE(nn.Module):
                 loss += (log_term.mean() / self.num_labels)
                 print('------@@@@Term2-------')
                 print(loss)
+                
+                logger.log_metrics({"train/loss_mlp1_term2": loss.item()})
                 
                 indices = indices.tolist() if isinstance(indices, torch.Tensor) else indices
                 return ExpertOutput(
@@ -465,10 +471,12 @@ class EoE(nn.Module):
                 print(self.num_labels)
                 total_log_term += (log_term.mean() / self.num_labels)
             # print("7")
-            print("----@@@@@@@@-------")
-            print(total_log_term / len(description_ids_list))
+            # print("----@@@@@@@@-------")
+            # print(total_log_term / len(description_ids_list))
             loss += (total_log_term / len(description_ids_list)).item()
-                            
+        # logger.log_metrics({"train/loss": loss})
+        logger.log_metrics({"train/cr_loss": (total_log_term / len(description_ids_list)).item()})
+        logger.log_metrics({"train/total_loss": loss.item()})
         logits = logits[:, :]
         preds = logits.max(dim=-1)[1]
                 

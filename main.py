@@ -4,6 +4,7 @@ import random
 import sys
 from types import SimpleNamespace
 import torch
+import wandb_logger as logger
 
 import hydra
 import numpy as np
@@ -37,6 +38,15 @@ task_to_trainer = {
     "ExpertTrainer": ExpertTrainer,
     "EoETrainer": EoETrainer,
 }
+
+wandb_api_key = "0806b2d5c00870a95f366d95c825d7680649abb7"  # Thay YOUR_WANDB_API_KEY bằng API key thực tế của bạn
+
+# 1. Khởi tạo wandb
+logger.initialize_wandb(
+    project_name="multi_file_project", 
+    run_name="experiment_1", 
+    api_key=wandb_api_key
+)
 
 
 @hydra.main(version_base=None, config_path="configs", config_name="default")

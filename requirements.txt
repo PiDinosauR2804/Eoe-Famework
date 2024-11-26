@@ -93,4 +93,5 @@ wheel==0.41.2
 xxhash==0.8.0
 yarl==1.9.3
 zipp==3.11.0
+wandb
 
