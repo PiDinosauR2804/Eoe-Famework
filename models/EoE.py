@@ -452,9 +452,10 @@ class EoE(nn.Module):
         
         if "mlp2" in kwargs and kwargs["mlp2"]:
             hidden_states = input_ids
-            logits = self.classifier_only_bert[self.num_tasks](hidden_states.float())
+            logits = self.classifier_only_bert[self.num_tasks](hidden_states)
+            logits = torch.tensor(labels)
             if self.training:
-                offset_label = labels
+                offset_label = torch.LongTensor(labels)
                 loss = F.cross_entropy(logits, offset_label)
             
             logits = logits[:, :]
