@@ -14,10 +14,14 @@ class CustomCollatorWithPadding:
     pad_to_multiple_of: Optional[int] = None
     return_tensors: str = "pt"
 
-    def pad_to_same_length(self, batch_data):
+    def pad_to_same_length(self, batch_data, float_check=False):
+        print(float_check)
         if isinstance(batch_data[0], int):
             if self.return_tensors == "pt":
-                return torch.LongTensor(batch_data)
+                if float_check:
+                    return torch.FloatTensor(batch_data)
+                else:    
+                    return torch.LongTensor(batch_data)
             else:
                 return batch_data
         max_length = max([len(c) for c in batch_data])
@@ -26,17 +30,28 @@ class CustomCollatorWithPadding:
             ins = ins + [0] * (max_length - len(ins))
             ans.append(ins)
         if self.return_tensors == "pt":
-            return torch.LongTensor(ans)
+            if float_check:
+                return torch.FloatTensor(batch_data)
+            else:    
+                return torch.LongTensor(batch_data)
         else:
             return ans
 
     def __call__(self, features: List[Dict[str, Any]]) -> Dict[str, Any]:
         batch_keys = features[0].keys()
         batch = {k: [] for k in batch_keys}
-        print(batch_keys)
+        
+        float_check = False
+        if 'float_check' in batch_keys:
+            float_check = True
+        
         for ins in features:
             for k in batch_keys:
                 batch[k].append(ins[k])
         for k in batch_keys:
-            batch[k] = self.pad_to_same_length(batch[k])
+            print(k)
+            if float_check and k == 'input_ids':
+                batch[k] = self.pad_to_same_length(batch[k], True)
+            else:
+                batch[k] = self.pad_to_same_length(batch[k])
         return batch
