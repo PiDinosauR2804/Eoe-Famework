@@ -421,7 +421,7 @@ class EoE(nn.Module):
                 indices = indices.tolist() if isinstance(indices, torch.Tensor) else indices
                 return ExpertOutput(
                     loss=loss,
-                    hidden_states=hidden_states,
+                    hidden_states=anchor_hidden_states,
                     indices=indices,
                 )
         
@@ -438,6 +438,7 @@ class EoE(nn.Module):
         if self.training:
             offset_label = labels
             loss = F.cross_entropy(logits, offset_label) 
+            loggerdb.log_metrics({"train/loss_cross_entropy": loss.item()})
             anchor_hidden_states = hidden_states
             # print("1")
             description_ids_list = {k: v for k, v in kwargs.items() if k.startswith('description_ids_')}

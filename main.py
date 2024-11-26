@@ -72,6 +72,7 @@ def main(cfg: DictConfig):
         ]
     )
     
+
     logger.setLevel(logging.INFO)
 
     additional_special_tokens = task_to_additional_special_tokens[args.task_name] \
