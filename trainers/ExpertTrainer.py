@@ -63,14 +63,14 @@ class ExpertTrainer:
                 train_dataset=train_dataset,
                 data_collator=default_data_collator
             )
-            cur_test_data = data.filter(cur_labels, 'test')
-            cur_test_dataset = BaseDataset(cur_test_data)
-            cur_result = self.eval(
-                model=model,
-                eval_dataset=cur_test_dataset,
-                data_collator=default_data_collator,
-                seen_labels=seen_labels,
-            )
+            # cur_test_data = data.filter(cur_labels, 'test')
+            # cur_test_dataset = BaseDataset(cur_test_data)
+            # cur_result = self.eval(
+            #     model=model,
+            #     eval_dataset=cur_test_dataset,
+            #     data_collator=default_data_collator,
+            #     seen_labels=seen_labels,
+            # )
 
             os.makedirs(self.args.save_model_dir, exist_ok=True)
             save_model_name = f"{self.args.dataset_name}_{seed}_{self.args.augment_type}.pth"
@@ -78,8 +78,8 @@ class ExpertTrainer:
             logger.info(f"save expert model to {save_model_path}")
             self.save_model(model, save_model_path)
 
-            all_cur_acc[self.task_idx] = cur_result
-            all_total_acc[self.task_idx] = cur_result
+            # all_cur_acc[self.task_idx] = cur_result
+            # all_total_acc[self.task_idx] = cur_result
             all_total_hit[self.task_idx] = 1
             # only for the first task
             if self.task_idx == 0:
