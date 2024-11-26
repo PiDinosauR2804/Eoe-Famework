@@ -381,7 +381,7 @@ class EoE(nn.Module):
         loss = None
         
         if self.training:
-            if "mlp1_term2" in kwargs and kwargs["mlp1_term2"]:
+            if "mlp1_term2" in kwargs:
                 anchor_hidden_states = self.feature_extractor(
                     input_ids=input_ids,
                     attention_mask=attention_mask,
