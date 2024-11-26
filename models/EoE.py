@@ -298,28 +298,6 @@ class EoE(nn.Module):
                 if "extract_mode" in kwargs:
                     del kwargs["extract_mode"]
                 return hidden_states
-            # if "return_hidden_states" in kwargs and kwargs["return_hidden_states"]:
-            #     # input task idx 0-9 -1:bert
-            #     if kwargs["task_idx"] == -1:  # origin bert
-            #         indices = None
-            #         use_origin = True
-            #         kwargs.update({"extract_mode": "entity"})
-            #     elif kwargs["task_idx"] == 0:  # first task model
-            #         indices = None
-            #         use_origin = False
-            #     else:
-            #         indices = [kwargs["task_idx"]] * batch_size
-            #         use_origin = False
-            #     hidden_states = self.feature_extractor(
-            #         input_ids=input_ids if kwargs["task_idx"] != -1 else kwargs["input_ids_without_marker"],
-            #         indices=indices,
-            #         use_origin=use_origin,
-            #         **kwargs
-            #     )
-            #     if "extract_mode" in kwargs:
-            #         del kwargs["extract_mode"]
-            #     return hidden_states
-
             
             hidden_states = self.feature_extractor(
                 input_ids=input_ids,
@@ -338,12 +316,12 @@ class EoE(nn.Module):
                 indices_task_id = indices // 8
                 indices_task_id = torch.tensor(indices_task_id, dtype=torch.long, device=self.device)
             
-            print(indices_task_id) 
+            # print(indices_task_id) 
                 
                 
             hidden_states_final = self.feature_extractor(
                 input_ids=input_ids,
-                indices=indices,
+                indices=indices_task_id,
                 **kwargs
             )
             
@@ -366,103 +344,16 @@ class EoE(nn.Module):
             
             preds = preds.cpu().numpy()
             indices = indices.cpu().numpy()
-            print("-----------------------------------")
-            print(preds)
-            print(indices)
+            # print("-----------------------------------")
+            # print(preds)
+            # print(indices)
             
             # Chuyển đổi indices thành 
             return ExpertOutput(
                 preds=preds,
                 indices=indices
             )
-
-            # all_score_over_task = []
-            # all_score_over_class = []
-            # all_logits = []
-            # for e_id in range(-1, self.num_tasks + 1):
-            #     if e_id == -1:
-            #         indices = None
-            #         use_origin = True
-            #         kwargs.update({"extract_mode": "entity"})
-            #     elif e_id == 0:
-            #         indices = None
-            #         use_origin = False
-            #     else:
-            #         indices = [e_id] * batch_size
-            #         use_origin = False
-            #     hidden_states = self.feature_extractor(
-            #         input_ids=input_ids if e_id != -1 else kwargs["input_ids_without_marker"],
-            #         indices=indices,
-            #         use_origin=use_origin,
-            #         **kwargs
-            #     )
-            #     if "extract_mode" in kwargs:
-            #         del kwargs["extract_mode"]
-            #     _, scores_over_tasks, scores_over_classes = self.get_prompt_indices(hidden_states, expert_id=e_id)
-            #     scores_over_tasks = scores_over_tasks.transpose(-1, -2)
-            #     scores_over_classes = scores_over_classes.transpose(-1, -2)
-            #     if e_id != -1:
-            #         scores_over_tasks[:, :e_id] = float('inf')  # no seen task
-            #         logits = self.classifier[e_id](hidden_states)[:, :self.class_per_task]
-            #         all_logits.append(logits)
-            #     all_score_over_task.append(scores_over_tasks)
-            #     all_score_over_class.append(scores_over_classes)
-                
-            # all_score_over_task = torch.stack(all_score_over_task, dim=1)  # (batch, expert_num, task_num)
-            # all_score_over_class = torch.stack(all_score_over_class, dim=1)  # (batch, expert_num, task_num)
-            # all_logits = torch.stack(all_logits, dim=1)
-            # indices = []
-            # # expert0_score_over_task = all_score_over_task[:, 0, :]  # (batch, task_num)
-            # expert_values, expert_indices = torch.topk(all_score_over_task, dim=-1, k=all_score_over_task.shape[-1],
-            #                                            largest=False)
-            # expert_values = expert_values.tolist()
-            # expert_indices = expert_indices.tolist()
-            
-            # for i in range(batch_size):
-            #     bert_indices = expert_indices[i][0]
-            #     task_indices = expert_indices[i][1]
-            #     if self.default_expert == "bert":
-            #         default_indices = copy.deepcopy(bert_indices)
-            #     else:
-            #         default_indices = copy.deepcopy(task_indices)
-            #     min_task = min(bert_indices[0], task_indices[0])
-            #     max_task = max(bert_indices[0], task_indices[0])
-            #     # valid_task_id = [min_task, max_task]
-            #     cur_min_expert = self.shift_expert_id(min_task)
-            #     if bert_indices[0] != task_indices[0] and cur_min_expert > 1:
-            #         cur_ans = []
-            #         for j in range(0, cur_min_expert + 1):
-            #             if j <= self.max_expert:  # self.max_expert==1 --> default expert
-            #                 for k in expert_indices[i][j]:
-            #                     if k >= min_task:
-            #                         cur_ans.append(k)
-            #                         break
-            #         cur_count = Counter(cur_ans)
-            #         most_common_element = cur_count.most_common(1)
-            #         if most_common_element[0][1] == cur_ans.count(default_indices[0]):
-            #             indices.append(default_indices[0])
-            #         else:
-            #             indices.append(most_common_element[0][0])
-            #     else:
-            #         indices.append(default_indices[0])
-            #     # indices.append(expert_indices[i][1][0])
-                
-            # indices = torch.LongTensor(indices).to(self.device)
-            # if oracle:
-            #     task_idx = kwargs["task_idx"]
-            #     indices = torch.LongTensor([task_idx] * batch_size).to(self.device)
-            # idx = torch.arange(batch_size).to(self.device)
-            # all_logits = all_logits[idx, indices]
-            # preds = all_logits.max(dim=-1)[1] + self.class_per_task * indices
-            # indices = indices.tolist() if isinstance(indices, torch.Tensor) else indices
-            # return ExpertOutput(
-            #     preds=preds,
-            #     indices=indices,
-            #     expert_task_preds=all_score_over_task,
-            #     expert_class_preds=all_score_over_class,
-            # )
-        
-        
+     
         if "mlp2" in kwargs and kwargs["mlp2"]:
             hidden_states = input_ids
             # print(input_ids)
@@ -534,22 +425,19 @@ class EoE(nn.Module):
                 denominator = torch.sum(torch.stack(denominator_list))
 
                 # Compute log term
-                log_term =torch.zeros(batch_size, 1, device=self.device)
+                log_term = torch.zeros(batch_size, 1, device=self.device)
                 for numerator in numerator_list:
                     log_term += torch.log(numerator / denominator)
                     # print("------------------")
                     # print(numerator)
                     # print(denominator)
-                loss += log_term.mean()
-                total_log_term += log_term.mean()
+                # loss += log_term.mean()
+                total_log_term += (log_term.mean() / self.num_labels)
             
-            loss += total_log_term / len(description_ids_list)
-                    
-                # loss += info_nce_loss_value               
-
-        # logits = logits[:, :self.class_per_task]
-        # preds = logits.max(dim=-1)[1] + self.class_per_task * indices
-        
+            loss += (total_log_term / len(description_ids_list))
+            print("----@@@@@@@@-------")
+            print(total_log_term / len(description_ids_list))
+                            
         logits = logits[:, :]
         preds = logits.max(dim=-1)[1]
                 

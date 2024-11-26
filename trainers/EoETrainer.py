@@ -72,12 +72,12 @@ class EoETrainer(BaseTrainer):
                 expert_model = f"./ckpt/{self.args.dataset_name}_{seed}_{self.args.augment_type}.pth"
                 model.load_expert_model(expert_model)
                 logger.info(f"load first task model from {expert_model}")
-            # else:
-            #     self.train(
-            #         model=model,
-            #         train_dataset=train_dataset,
-            #         data_collator=default_data_collator
-            #     )
+            else:
+                self.train(
+                    model=model,
+                    train_dataset=train_dataset,
+                    data_collator=default_data_collator
+                )
                 
             self.statistic(model, train_dataset_old, default_data_collator)
                 
