@@ -455,7 +455,14 @@ class EoE(nn.Module):
                 # print("4")
                 # Compute denominator: sum(exp(h · h' / τ)) + sum(exp(h · μ_c / τ))
                 denominator_list = []
-                denominator_list.append(torch.exp((anchor_hidden_states * description_hidden_states).sum(dim=1, keepdim=True) / self.tau))
+                stack_u_c = []
+                for label in labels:
+                    u_c = self.expert_distribution["class_mean"][label]
+                    stack_u_c.append(u_c)
+                stack_u_c = torch.stack(stack_u_c)
+                
+                
+                denominator_list.append(torch.exp((anchor_hidden_states * stack_u_c).sum(dim=1, keepdim=True) / self.tau))
                 denominator_list.extend(numerator_list)  # Add numerator terms for μ_c
                 denominator = torch.sum(torch.stack(denominator_list))
                 # print("5")
