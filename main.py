@@ -4,7 +4,7 @@ import random
 import sys
 from types import SimpleNamespace
 import torch
-import wandb_logger as logger
+import wandb_logger as loggerdb
 
 import hydra
 import numpy as np
@@ -15,7 +15,6 @@ from data import FewRelData, TACREDData
 from models import ExpertModel, EoE
 from trainers import BaseTrainer, ExpertTrainer, EoETrainer
 
-logger = logging.getLogger(__name__)
 
 os.environ['TOKENIZERS_PARALLELISM'] = "false"
 
@@ -42,7 +41,7 @@ task_to_trainer = {
 wandb_api_key = "0806b2d5c00870a95f366d95c825d7680649abb7"  # Thay YOUR_WANDB_API_KEY bằng API key thực tế của bạn
 
 # 1. Khởi tạo wandb
-logger.initialize_wandb(
+loggerdb.initialize_wandb(
     project_name="multi_file_project", 
     run_name="experiment_1", 
     api_key=wandb_api_key
@@ -63,6 +62,7 @@ def main(cfg: DictConfig):
     #     handlers=[logging.StreamHandler(sys.stdout)],
     # )
     logging.basicConfig(
+        level=logging.DEBUG,
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
         datefmt="%m/%d/%Y %H:%M:%S",
         handlers=[
@@ -70,6 +70,8 @@ def main(cfg: DictConfig):
             logging.StreamHandler()  # Ghi log ra terminal
         ]
     )
+    
+    logger = logging.getLogger(__name__)
     
     log_file = open("output.log", "w")
 

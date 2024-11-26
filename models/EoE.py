@@ -5,7 +5,7 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Optional, Tuple
 import google.generativeai as genai
-import wandb_logger as logger
+import wandb_logger as loggerdb
 
 
 
@@ -365,7 +365,7 @@ class EoE(nn.Module):
             logits = logits[:, :]
             preds = logits.max(dim=-1)[1]
             
-            logger.log_metrics({"train/mlp2": loss.item()})
+            loggerdb.log_metrics({"train/mlp2": loss.item()})
             
             indices = indices.tolist() if isinstance(indices, torch.Tensor) else indices
             return ExpertOutput(
@@ -377,19 +377,18 @@ class EoE(nn.Module):
         
         
         # only for training
-        hidden_states = self.feature_extractor(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            indices=indices,
-            attribute="anchor",
-            **kwargs
-        )
         
         loss = None
         
         if self.training:
             if "mlp1_term2" in kwargs and kwargs["mlp1_term2"]:
-                anchor_hidden_states = hidden_states
+                anchor_hidden_states = self.feature_extractor(
+                    input_ids=input_ids,
+                    attention_mask=attention_mask,
+                    indices=indices,
+                    extract_mode="cls",
+                    **kwargs
+                )
                 numerator_list = []
                 for class_mean in self.expert_distribution["class_mean"]:
                     numerator_list.append(torch.exp(torch.matmul(anchor_hidden_states, class_mean.unsqueeze(1)) / self.tau))
@@ -417,7 +416,7 @@ class EoE(nn.Module):
                 print('------@@@@Term2-------')
                 print(loss)
                 
-                logger.log_metrics({"train/loss_mlp1_term2": loss.item()})
+                loggerdb.log_metrics({"train/loss_mlp1_term2": loss.item()})
                 
                 indices = indices.tolist() if isinstance(indices, torch.Tensor) else indices
                 return ExpertOutput(
@@ -425,7 +424,15 @@ class EoE(nn.Module):
                     hidden_states=hidden_states,
                     indices=indices,
                 )
-                
+        
+        hidden_states = self.feature_extractor(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            indices=indices,
+            attribute="anchor",
+            **kwargs
+        )
+            
         logits = self.classifier[self.num_tasks](hidden_states)
 
         if self.training:
@@ -483,8 +490,8 @@ class EoE(nn.Module):
             # print(total_log_term / len(description_ids_list))
             loss += (total_log_term / len(description_ids_list)).item()
         # logger.log_metrics({"train/loss": loss})
-        logger.log_metrics({"train/cr_loss": (total_log_term / len(description_ids_list)).item()})
-        logger.log_metrics({"train/total_loss": loss.item()})
+        loggerdb.log_metrics({"train/cr_loss": (total_log_term / len(description_ids_list)).item()})
+        loggerdb.log_metrics({"train/total_loss": loss.item()})
         logits = logits[:, :]
         preds = logits.max(dim=-1)[1]
                 
