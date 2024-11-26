@@ -15,6 +15,7 @@ from data import FewRelData, TACREDData
 from models import ExpertModel, EoE
 from trainers import BaseTrainer, ExpertTrainer, EoETrainer
 
+logger = logging.getLogger(__name__)
 
 os.environ['TOKENIZERS_PARALLELISM'] = "false"
 
@@ -71,15 +72,6 @@ def main(cfg: DictConfig):
         ]
     )
     
-    logger = logging.getLogger(__name__)
-    
-    log_file = open("output.log", "w")
-
-    # Chuyển hướng stdout và stderr
-    sys.stdout = log_file
-    sys.stderr = log_file
-
-
     logger.setLevel(logging.INFO)
 
     additional_special_tokens = task_to_additional_special_tokens[args.task_name] \

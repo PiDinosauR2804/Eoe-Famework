@@ -412,7 +412,7 @@ class EoE(nn.Module):
                 for numerator in numerator_list:
                     log_term += torch.log(numerator / denominator)
                     
-                loss += (log_term.mean() / self.num_labels)
+                loss = (log_term.mean() / self.num_labels)
                 print('------@@@@Term2-------')
                 print(loss)
                 
