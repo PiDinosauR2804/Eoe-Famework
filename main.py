@@ -62,6 +62,7 @@ loggerdb.initialize_wandb(
 
 @hydra.main(version_base=None, config_path="configs", config_name="default")
 def main(cfg: DictConfig):
+    logger.setLevel(logging.INFO)
     args = OmegaConf.create()  # cfg seems to be read-only
     args = OmegaConf.merge(args, cfg.task_args, cfg.training_args)
     args = SimpleNamespace(**args)
@@ -73,8 +74,6 @@ def main(cfg: DictConfig):
     #     datefmt="%m/%d/%Y %H:%M:%S",
     #     handlers=[logging.StreamHandler(sys.stdout)],
     # )    
-
-    logger.setLevel(logging.INFO)
 
     logger.info("This message should be logged.")
     for handler in logger.handlers:
