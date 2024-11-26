@@ -48,7 +48,7 @@ class EoETrainer(BaseTrainer):
             logger.info(f"Current classes: {' '.join(cur_labels)}")
             
             for cur_label in cur_labels:
-                model.generate_description_genai(cur_label, self.args.dataset_name, tokenizer)
+                model.generate_description(cur_label, self.args.dataset_name, tokenizer)
             pool = model.get_description_ids(cur_labels)
             
             train_data = data.filter_and_add_desciption(cur_labels, pool) 
