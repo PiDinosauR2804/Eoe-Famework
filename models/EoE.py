@@ -252,31 +252,6 @@ class EoE(nn.Module):
 
         return indices, scores_over_tasks, class_indices_over_tasks
 
-    def info_nce_loss(self, anchor, positive, negative, temperature=0.07):
-        # anchor: [batch_size, dim]
-        # positive: [batch_size, dim]
-        # negatives: [batch_size, num_negatives, dim]
-
-        # Normalize embeddings
-        anchor = F.normalize(anchor, dim=1)
-        positive = F.normalize(positive, dim=1)
-        negative = F.normalize(negative, dim=1)
-
-        # Positive logits
-        pos_logits = torch.sum(anchor * positive, dim=1, keepdim=True) / temperature  # [batch_size, 1]
-
-        # Negative logits
-        neg_logits = torch.sum(anchor * negative, dim=1, keepdim=True) / temperature  # [batch_size, 1]
-
-        # Combine logits
-        logits = torch.cat([pos_logits, neg_logits], dim=1)  # [batch_size, 1 + num_negatives]
-
-        labels = torch.zeros(anchor.size(0), dtype=torch.long).to(anchor.device)
-
-        # Compute loss
-        loss = F.cross_entropy(logits, labels)
-        return loss
-
     def forward(self, input_ids, attention_mask=None, labels=None, oracle=False, **kwargs):
 
         batch_size, _ = input_ids.shape
@@ -353,7 +328,7 @@ class EoE(nn.Module):
                 preds=preds,
                 indices=indices
             )
-     
+
         if "mlp2" in kwargs and kwargs["mlp2"]:
             hidden_states = input_ids
             # print(input_ids)
@@ -374,6 +349,7 @@ class EoE(nn.Module):
                 indices=indices,
             )
         
+        
         # only for training
         hidden_states = self.feature_extractor(
             input_ids=input_ids,
@@ -382,13 +358,44 @@ class EoE(nn.Module):
             attribute="anchor",
             **kwargs
         )
+        
+        loss = None
+        
+        if self.training:
+            if "mlp1_term2" in kwargs and kwargs["mlp1_term2"]:
+                anchor_hidden_states = hidden_states
+                numerator_list = []
+                for class_mean in self.expert_distribution["class_mean"]:
+                    numerator_list.append(torch.exp(torch.matmul(anchor_hidden_states, class_mean.unsqueeze(1)) / self.tau))
+                # numerator = torch.sum(torch.stack(numerator_list))
+                
+                # Compute denominator: sum(exp(h · h' / τ)) + sum(exp(h · μ_c / τ))
+                denominator_list = []
+                denominator_list.append(torch.exp((anchor_hidden_states * description_hidden_states).sum(dim=1, keepdim=True) / self.tau))
+                denominator_list.extend(numerator_list)  # Add numerator terms for μ_c
+                denominator = torch.sum(torch.stack(denominator_list))
+
+                # Compute log term
+                log_term = torch.zeros(batch_size, 1, device=self.device)
+                for numerator in numerator_list:
+                    log_term += torch.log(numerator / denominator)
+                    
+                loss += (log_term.mean() / self.num_labels)
+                print('------@@@@Term2-------')
+                print(loss)
+                
+                indices = indices.tolist() if isinstance(indices, torch.Tensor) else indices
+                return ExpertOutput(
+                    loss=loss,
+                    hidden_states=hidden_states,
+                    indices=indices,
+                )
+                
         logits = self.classifier[self.num_tasks](hidden_states)
 
-        loss = None
         if self.training:
             offset_label = labels
-            loss = F.cross_entropy(logits, offset_label)
-            
+            loss = F.cross_entropy(logits, offset_label) 
             anchor_hidden_states = hidden_states
 
             description_ids_list = {k: v for k, v in kwargs.items() if k.startswith('description_ids_')}

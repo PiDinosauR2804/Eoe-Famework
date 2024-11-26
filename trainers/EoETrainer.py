@@ -43,7 +43,6 @@ class EoETrainer(BaseTrainer):
             self.task_idx = task_idx
             cur_labels = [data.label_list[c] for c in label_order[task_idx]]
             data.add_labels(cur_labels, task_idx)
-            seen_labels += cur_labels
 
             logger.info(f"***** Task-{task_idx + 1} *****")
             logger.info(f"Current classes: {' '.join(cur_labels)}")
@@ -60,11 +59,21 @@ class EoETrainer(BaseTrainer):
             for key, value in sample.items():
                 print(f"  {key}: {value}") 
             
-            
             num_train_labels = len(cur_labels)
-            train_dataset = BaseDataset(train_data)
             
+            train_dataset = BaseDataset(train_data)
             train_dataset_old = BaseDataset(train_data_old)     
+            
+            pool_mlp1_term2 = model.get_description_ids(seen_labels)
+            train_data_mlp1_term2 = data.filler_add_old_description(seen_labels, pool_mlp1_term2, 10)
+            train_dataset_mlp1_term2 = BaseDataset(train_data_mlp1_term2)
+            
+            sample = train_data_mlp1_term2[0]
+            print("Anchor Sample MLP1 Term2:")
+            for key, value in sample.items():
+                print(f"  {key}: {value}") 
+            
+            seen_labels += cur_labels
             
             model.new_task(num_train_labels)
 
@@ -78,6 +87,12 @@ class EoETrainer(BaseTrainer):
                     train_dataset=train_dataset,
                     data_collator=default_data_collator
                 )
+                
+                # self.train(
+                #     model=model,
+                #     train_dataset=train_dataset_mlp1_term2,
+                #     data_collator=default_data_collator
+                # )
                 
             self.statistic(model, train_dataset_old, default_data_collator)
                 

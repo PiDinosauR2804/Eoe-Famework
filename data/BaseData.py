@@ -223,33 +223,24 @@ class BaseData:
         if not isinstance(labels, list):
             labels = [labels]
             
-        labels_label2id = [self.label2id[label_] for label_ in labels]
+        # labels_label2id = [self.label2id[label_] for label_ in labels]
         print(labels)
         res = []
         for label in labels:
             pools = descriptions[label]
             sub_res = []
             cur_label = self.label2id[label]
-            for i in range(num):
-                # print(label)
-                # if idxxx:
-                #     print("-------")
-                # for key, value in anchor.items():
-                #     print(f"  {key}: {value}")
-                    
-                if cur_label in ['P26', 'P3373', 'per:siblings', 'org:alternate_names', 'per:spouse',
+            if cur_label in ['P26', 'P3373', 'per:siblings', 'org:alternate_names', 'per:spouse',
                                         'per:alternate_names', 'per:other_family']:
                     continue
-                
-                ins = {
-                    'labels': cur_label,
-                }
-                
-                for idx, pool in enumerate(pools):
-                    ins.update({
-                        f'description_ids_{idx}': pool
-                    })
-                sub_res.append(ins)
+            for i in range(num):                                  
+                for pool in pools:
+                    ins = {
+                        'input_ids': pool,
+                        'labels': cur_label,
+                        'mlp1_term2': True,
+                    }
+                    sub_res.append(ins)
             res += sub_res
         return res
 
