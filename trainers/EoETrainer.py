@@ -14,7 +14,7 @@ from transformers import set_seed
 
 from data import BaseDataset, BaseTripletDataset, BaseHidden
 from trainers import BaseTrainer
-from utils import CustomCollatorWithPadding, relation_data_augmentation, relation_data_augmentation_and_contrastive_learning
+from utils import CustomCollatorWithPadding, CustomFloatCollatorWithPadding, relation_data_augmentation, relation_data_augmentation_and_contrastive_learning
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +31,7 @@ class EoETrainer(BaseTrainer):
             set_seed(seed)
             self.cur_seed = seed
         default_data_collator = CustomCollatorWithPadding(tokenizer)
+        float_data_collator = CustomFloatCollatorWithPadding(tokenizer)
 
         seen_labels = []
         all_cur_acc = []
@@ -95,7 +96,7 @@ class EoETrainer(BaseTrainer):
             self.train_mlp2(
                 model=model,
                 train_dataset=hidden_dataset,
-                data_collator=default_data_collator
+                data_collator=float_data_collator
             )
 
             os.makedirs(f"./ckpt/{self.args.dataset_name}-{seed}-{self.args.augment_type}", exist_ok=True)
