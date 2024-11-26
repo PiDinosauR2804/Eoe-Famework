@@ -4,6 +4,7 @@ import json
 from collections import Counter
 from dataclasses import dataclass
 from typing import Optional, Tuple
+import google.generativeai as genai
 
 
 import re
@@ -62,10 +63,31 @@ class EoE(nn.Module):
             }
         self.label_description = {}
         self.label_description_ids = {}
+        self.number_description = 3
         self.classifier = nn.ParameterList()
         self.classifier_only_bert = nn.ParameterList()
         
         self.triplet_loss_fn = nn.TripletMarginLoss(margin=1.0, p=2)
+
+    def generate_description_genai(self, label, dataset_name, tokenizer):
+        if dataset_name.lower() == 'fewrel':
+            file_path = 'datasets/FewRel/pid2name.json'
+            with open(file_path, 'r', encoding='utf-8') as json_file:
+                data = json.load(json_file)
+        
+        label_name = data[label][0]
+        
+        genai.configure(api_key="AIzaSyBkNokklYsVbymqhuS15YCiM-XrMjyz9CE")
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        pool = []
+        for i in range(self.number_description):
+            prompt = f"Describe the label '{label_name}' in your own words, maximum length is 50 words, focusing on originality: "
+            response = model.generate_content(prompt)
+            pool.append(response.text)
+        
+        # Lưu mô tả nhãn vào label_description        
+        self.label_description[label] = [self.preprocess_text(desc) for desc in pool]
+        self.label_description_ids[label] = [self.preprocess_tokenize_desciption(desc, tokenizer) for desc in self.label_description[label]]
 
     def generate_description(self, label, dataset_name, tokenizer):
         if dataset_name.lower() == 'fewrel':
@@ -395,13 +417,13 @@ class EoE(nn.Module):
 
         if self.training:
             offset_label = labels
-            loss = F.cross_entropy(logits, offset_label) 
+            loss += F.cross_entropy(logits, offset_label) 
             anchor_hidden_states = hidden_states
-
+            print("1")
             description_ids_list = {k: v for k, v in kwargs.items() if k.startswith('description_ids_')}
             total_log_term = torch.zeros(1, device=self.device)
             for k, v in description_ids_list.items():
-                
+                print("2")
                 description_hidden_states = self.feature_extractor(
                     input_ids=v,
                     attention_mask=(v != 0),
@@ -414,7 +436,7 @@ class EoE(nn.Module):
                 # info_nce_loss_value = self.info_nce_loss(anchor_hidden_states, description_hidden_states)
                 
                 # contrastive regularization Loss
-                
+                print("3")
                 # Compute numerator: exp(h · μ_c / τ)
                 numerator_list = []
                 for class_mean in self.expert_distribution["class_mean"]:
@@ -424,13 +446,13 @@ class EoE(nn.Module):
                     # print(anchor_hidden_states.shape)
                     numerator_list.append(torch.exp(torch.matmul(anchor_hidden_states, class_mean.unsqueeze(1)) / self.tau))
                 # numerator = torch.sum(torch.stack(numerator_list))
-                
+                print("4")
                 # Compute denominator: sum(exp(h · h' / τ)) + sum(exp(h · μ_c / τ))
                 denominator_list = []
                 denominator_list.append(torch.exp((anchor_hidden_states * description_hidden_states).sum(dim=1, keepdim=True) / self.tau))
                 denominator_list.extend(numerator_list)  # Add numerator terms for μ_c
                 denominator = torch.sum(torch.stack(denominator_list))
-
+                print("5")
                 # Compute log term
                 log_term = torch.zeros(batch_size, 1, device=self.device)
                 for numerator in numerator_list:
@@ -439,8 +461,10 @@ class EoE(nn.Module):
                     # print(numerator)
                     # print(denominator)
                 # loss += log_term.mean()
+                print("6")
+                print(self.num_labels)
                 total_log_term += (log_term.mean() / self.num_labels)
-            
+            print("7")
             loss += (total_log_term / len(description_ids_list))
             print("----@@@@@@@@-------")
             print(total_log_term / len(description_ids_list))

@@ -48,7 +48,7 @@ class EoETrainer(BaseTrainer):
             logger.info(f"Current classes: {' '.join(cur_labels)}")
             
             for cur_label in cur_labels:
-                model.generate_description(cur_label, self.args.dataset_name, tokenizer)
+                model.generate_description_genai(cur_label, self.args.dataset_name, tokenizer)
             pool = model.get_description_ids(cur_labels)
             
             train_data = data.filter_and_add_desciption(cur_labels, pool) 
@@ -64,14 +64,15 @@ class EoETrainer(BaseTrainer):
             train_dataset = BaseDataset(train_data)
             train_dataset_old = BaseDataset(train_data_old)     
             
-            pool_mlp1_term2 = model.get_description_ids(seen_labels)
-            train_data_mlp1_term2 = data.filler_add_old_description(seen_labels, pool_mlp1_term2, 10)
-            train_dataset_mlp1_term2 = BaseDataset(train_data_mlp1_term2)
-            
-            sample = train_data_mlp1_term2[0]
-            print("Anchor Sample MLP1 Term2:")
-            for key, value in sample.items():
-                print(f"  {key}: {value}") 
+            if self.task_idx == 0:
+                pool_mlp1_term2 = model.get_description_ids(seen_labels)
+                train_data_mlp1_term2 = data.filler_add_old_description(seen_labels, pool_mlp1_term2, 10)
+                train_dataset_mlp1_term2 = BaseDataset(train_data_mlp1_term2)
+                
+                sample = train_data_mlp1_term2[0]
+                print("Anchor Sample MLP1 Term2:")
+                for key, value in sample.items():
+                    print(f"  {key}: {value}") 
             
             seen_labels += cur_labels
             
@@ -88,11 +89,11 @@ class EoETrainer(BaseTrainer):
                     data_collator=default_data_collator
                 )
                 
-                # self.train(
-                #     model=model,
-                #     train_dataset=train_dataset_mlp1_term2,
-                #     data_collator=default_data_collator
-                # )
+                self.train(
+                    model=model,
+                    train_dataset=train_dataset_mlp1_term2,
+                    data_collator=default_data_collator
+                )
                 
             self.statistic(model, train_dataset_old, default_data_collator)
                 
