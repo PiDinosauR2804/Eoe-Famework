@@ -15,6 +15,17 @@ from data import FewRelData, TACREDData
 from models import ExpertModel, EoE
 from trainers import BaseTrainer, ExpertTrainer, EoETrainer
 
+log_file = "output.log"
+
+logging.basicConfig(
+    format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+    datefmt="%m/%d/%Y %H:%M:%S",
+    handlers=[
+        logging.FileHandler(log_file, mode="w"),  # Ghi log vào file
+        logging.StreamHandler(sys.stdout)  # Ghi log ra terminal
+    ]
+)
+
 logger = logging.getLogger(__name__)
 
 os.environ['TOKENIZERS_PARALLELISM'] = "false"
@@ -61,19 +72,13 @@ def main(cfg: DictConfig):
     #     format="%(asctime)s - %(le5velname)s - %(name)s - %(message)s",
     #     datefmt="%m/%d/%Y %H:%M:%S",
     #     handlers=[logging.StreamHandler(sys.stdout)],
-    # )
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
-        datefmt="%m/%d/%Y %H:%M:%S",
-        handlers=[
-            logging.FileHandler("output.log"),  # Ghi log vào file
-            logging.StreamHandler()  # Ghi log ra terminal
-        ]
-    )
-    
+    # )    
 
     logger.setLevel(logging.INFO)
+
+    logger.info("This message should be logged.")
+    for handler in logger.handlers:
+        print(f"Handler: {handler}")
 
     additional_special_tokens = task_to_additional_special_tokens[args.task_name] \
         if args.task_name in task_to_additional_special_tokens else []
@@ -149,7 +154,6 @@ def main(cfg: DictConfig):
         logger.info(f"{k} average : {avg_exp_results}")
         logger.info(f"{k}  std    : {std_exp_results}")
     logger.info("Training end !")
-    log_file.close()
 
 
 if __name__ == "__main__":
