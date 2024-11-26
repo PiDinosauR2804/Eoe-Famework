@@ -60,7 +60,8 @@ class EoETrainer(BaseTrainer):
                 print(f"  {key}: {value}") 
             
             num_train_labels = len(cur_labels)
-            
+            # print("1")
+            # print(tokenizer.vocab_size)
             train_dataset = BaseDataset(train_data)
             train_dataset_old = BaseDataset(train_data_old)     
             
@@ -77,7 +78,8 @@ class EoETrainer(BaseTrainer):
             seen_labels += cur_labels
             
             model.new_task(num_train_labels)
-
+            # print("2")
+            # print(tokenizer.vocab_size)
             if self.task_idx == 0:
                 expert_model = f"./ckpt/{self.args.dataset_name}_{seed}_{self.args.augment_type}.pth"
                 model.load_expert_model(expert_model)
@@ -94,9 +96,11 @@ class EoETrainer(BaseTrainer):
                     train_dataset=train_dataset_mlp1_term2,
                     data_collator=default_data_collator
                 )
-                
+            # print("3")
+            # print(tokenizer.vocab_size)
             self.statistic(model, train_dataset_old, default_data_collator)
-                
+            # print("4")
+            # print(tokenizer.vocab_size)
             # print(model.expert_distribution['class_mean'])
             # print(model.expert_distribution['cov_inv'])
             # print(model.expert_distribution['accumulate_cov'])
@@ -127,7 +131,8 @@ class EoETrainer(BaseTrainer):
                 save_dir=f"./ckpt/{self.args.dataset_name}-{seed}-{self.args.augment_type}",
                 save=True,
             )
-
+            # print("5")
+            # print(tokenizer.vocab_size)
             cur_test_data = data.filter(cur_labels, 'test')
             history_test_data = data.filter(seen_labels, 'test')
 

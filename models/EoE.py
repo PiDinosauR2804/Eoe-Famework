@@ -97,10 +97,10 @@ class EoE(nn.Module):
         
         label_name = data[label][0]
         model_name = "gpt2"  # Bạn có thể thay thế bằng một mô hình ngôn ngữ mã nguồn mở khác
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        tokenizer1 = AutoTokenizer.from_pretrained(model_name)
         model = AutoModelForCausalLM.from_pretrained(model_name)
         
-        generator = pipeline("text-generation", model=model, tokenizer=tokenizer)
+        generator = pipeline("text-generation", model=model, tokenizer=tokenizer1)
         
         prompt = f"Describe the label '{label_name}' in a simple and detailed way: "
         descriptions = generator(prompt, 

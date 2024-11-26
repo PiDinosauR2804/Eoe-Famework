@@ -47,21 +47,26 @@ def main(cfg: DictConfig):
     for k in args.__dict__:
         print(k + ": " + str(args.__dict__[k]))
 
-    logging.basicConfig(
-        format="%(asctime)s - %(le5velname)s - %(name)s - %(message)s",
-        datefmt="%m/%d/%Y %H:%M:%S",
-        handlers=[logging.StreamHandler(sys.stdout)],
-    )
     # logging.basicConfig(
     #     format="%(asctime)s - %(le5velname)s - %(name)s - %(message)s",
     #     datefmt="%m/%d/%Y %H:%M:%S",
-    #     handlers=[logging.FileHandler("output.log")],
+    #     handlers=[logging.StreamHandler(sys.stdout)],
     # )
+    logging.basicConfig(
+        format="%(asctime)s - %(le5velname)s - %(name)s - %(message)s",
+        datefmt="%m/%d/%Y %H:%M:%S",
+        handlers=[
+            logging.FileHandler("output.log"),  # Ghi log vào file
+            logging.StreamHandler()  # Ghi log ra terminal
+        ]
+    )
     
-    # log_file = open("output.log", "w")
+    log_file = open("output.log", "w")
 
     # Chuyển hướng stdout và stderr
-    # sys.stdout = log_file
+    sys.stdout = log_file
+    sys.stderr = log_file
+
 
     logger.setLevel(logging.INFO)
 
@@ -139,6 +144,7 @@ def main(cfg: DictConfig):
         logger.info(f"{k} average : {avg_exp_results}")
         logger.info(f"{k}  std    : {std_exp_results}")
     logger.info("Training end !")
+    log_file.close()
 
 
 if __name__ == "__main__":
