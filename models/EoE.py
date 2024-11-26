@@ -419,11 +419,11 @@ class EoE(nn.Module):
             offset_label = labels
             loss += F.cross_entropy(logits, offset_label) 
             anchor_hidden_states = hidden_states
-            print("1")
+            # print("1")
             description_ids_list = {k: v for k, v in kwargs.items() if k.startswith('description_ids_')}
             total_log_term = torch.zeros(1, device=self.device)
             for k, v in description_ids_list.items():
-                print("2")
+                # print("2")
                 description_hidden_states = self.feature_extractor(
                     input_ids=v,
                     attention_mask=(v != 0),
@@ -436,7 +436,7 @@ class EoE(nn.Module):
                 # info_nce_loss_value = self.info_nce_loss(anchor_hidden_states, description_hidden_states)
                 
                 # contrastive regularization Loss
-                print("3")
+                # print("3")
                 # Compute numerator: exp(h · μ_c / τ)
                 numerator_list = []
                 for class_mean in self.expert_distribution["class_mean"]:
@@ -446,7 +446,7 @@ class EoE(nn.Module):
                     # print(anchor_hidden_states.shape)
                     numerator_list.append(torch.exp(torch.matmul(anchor_hidden_states, class_mean.unsqueeze(1)) / self.tau))
                 # numerator = torch.sum(torch.stack(numerator_list))
-                print("4")
+                # print("4")
                 # Compute denominator: sum(exp(h · h' / τ)) + sum(exp(h · μ_c / τ))
                 denominator_list = []
                 denominator_list.append(torch.exp((anchor_hidden_states * description_hidden_states).sum(dim=1, keepdim=True) / self.tau))
@@ -461,10 +461,10 @@ class EoE(nn.Module):
                     # print(numerator)
                     # print(denominator)
                 # loss += log_term.mean()
-                print("6")
+                # print("6")
                 print(self.num_labels)
                 total_log_term += (log_term.mean() / self.num_labels)
-            print("7")
+            # print("7")
             loss += (total_log_term / len(description_ids_list))
             print("----@@@@@@@@-------")
             print(total_log_term / len(description_ids_list))
