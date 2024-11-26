@@ -455,7 +455,7 @@ class EoE(nn.Module):
             logits = self.classifier_only_bert[self.num_tasks](hidden_states)
             logits = torch.tensor(labels)
             if self.training:
-                offset_label = torch.LongTensor(labels)
+                offset_label = labels.to(dtype=torch.long)
                 loss = F.cross_entropy(logits, offset_label)
             
             logits = logits[:, :]
