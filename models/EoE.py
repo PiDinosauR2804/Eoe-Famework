@@ -325,17 +325,21 @@ class EoE(nn.Module):
                 input_ids=input_ids,
                 **kwargs
             )
-            task_idx = kwargs["task_idx"]
 
-            logits = self.classifier_only_bert[task_idx](hidden_states)
+            logits = self.classifier_only_bert[-1](hidden_states)
             
             pred = logits.argmax(dim=1)
-            
             indices = pred.to(self.device)
-                
-            indices = torch.LongTensor(indices).to(self.device)
+
             if oracle:
-                indices = torch.LongTensor([task_idx] * batch_size).to(self.device)
+                task_idx = kwargs["task_idx"]
+                indices_task_id = torch.LongTensor([task_idx] * batch_size).to(self.device)
+            else:
+                indices_task_id = indices // 8
+                indices_task_id = torch.tensor(indices_task_id, dtype=torch.long, device=self.device)
+            
+            print(indices_task_id) 
+                
                 
             hidden_states_final = self.feature_extractor(
                 input_ids=input_ids,
@@ -345,7 +349,10 @@ class EoE(nn.Module):
             
             logits_list = []
             for i in range(batch_size):
-                idx = indices[i].item()
+                if oracle:
+                    idx = kwargs["task_idx"]
+                else:
+                    idx = -1
                 classifier = self.classifier[idx]
                 hs = hidden_states_final[i].unsqueeze(0)
                 logits = classifier(hs)
@@ -356,7 +363,13 @@ class EoE(nn.Module):
 
             # Lấy dự đoán cuối cùng
             preds = logits_final.argmax(dim=-1)
-
+            
+            preds = preds.cpu().numpy()
+            indices = indices.cpu().numpy()
+            print("-----------------------------------")
+            print(preds)
+            print(indices)
+            
             # Chuyển đổi indices thành 
             return ExpertOutput(
                 preds=preds,
@@ -452,12 +465,11 @@ class EoE(nn.Module):
         
         if "mlp2" in kwargs and kwargs["mlp2"]:
             hidden_states = input_ids
-            print(input_ids)
+            # print(input_ids)
             logits = self.classifier_only_bert[self.num_tasks](hidden_states)
-            print(logits)
+            # print(logits)
             if self.training:
                 offset_label = labels.to(dtype=torch.long)
-                print(offset_label)
                 loss = F.cross_entropy(logits, offset_label)
             
             logits = logits[:, :]
@@ -487,12 +499,7 @@ class EoE(nn.Module):
             loss = F.cross_entropy(logits, offset_label)
             
             anchor_hidden_states = hidden_states
-            # print("anchor_hidden_states")
-            # print(anchor_hidden_states)
-            # print("First------------------")
-            # print(input_ids.size())
-            # print(positive_input_ids.size())
-            # print(negative_input_ids.size())
+
             description_ids_list = {k: v for k, v in kwargs.items() if k.startswith('description_ids_')}
             total_log_term = torch.zeros(1, device=self.device)
             for k, v in description_ids_list.items():
