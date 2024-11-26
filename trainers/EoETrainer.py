@@ -263,14 +263,6 @@ class EoETrainer(BaseTrainer):
 
                 inputs = {k: v.to(self.args.device) for k, v in inputs.items()}
                 inputs.update({"mlp2": True})
-                # if step <2:
-                #     formatted_tensor = inputs['input_ids'].cpu().numpy()
-                #     formatted_display = "\n".join(
-                #         ["[" + ", ".join(f"{x:.4f}" for x in row) + "]" for row in formatted_tensor]
-                #     )
-
-                #     # Print the formatted tensor
-                #     print(formatted_display)
 
                 outputs = model(**inputs)
                 loss = outputs.loss

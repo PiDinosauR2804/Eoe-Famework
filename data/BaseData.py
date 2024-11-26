@@ -88,9 +88,6 @@ class BaseData:
             res[idx]["labels"] = self.label2id[res[idx]["labels"]]
         return res
     
-        
-
-    
     def get_random_positive_samples_by_label(self, label, k):
         """
         Get k random samples from a specified label.
@@ -222,6 +219,39 @@ class BaseData:
             res[idx]["labels"] = self.label2id[res[idx]["labels"]]
         return res
 
+    def filler_add_old_description(self, labels, descriptions, num):
+        if not isinstance(labels, list):
+            labels = [labels]
+            
+        labels_label2id = [self.label2id[label_] for label_ in labels]
+        print(labels)
+        res = []
+        for label in labels:
+            pools = descriptions[label]
+            sub_res = []
+            cur_label = self.label2id[label]
+            for i in range(num):
+                # print(label)
+                # if idxxx:
+                #     print("-------")
+                # for key, value in anchor.items():
+                #     print(f"  {key}: {value}")
+                    
+                if cur_label in ['P26', 'P3373', 'per:siblings', 'org:alternate_names', 'per:spouse',
+                                        'per:alternate_names', 'per:other_family']:
+                    continue
+                
+                ins = {
+                    'labels': cur_label,
+                }
+                
+                for idx, pool in enumerate(pools):
+                    ins.update({
+                        f'description_ids_{idx}': pool
+                    })
+                sub_res.append(ins)
+            res += sub_res
+        return res
 
 class BaseDataset(Dataset):
     def __init__(self, data):
