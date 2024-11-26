@@ -413,8 +413,8 @@ class EoE(nn.Module):
                     log_term += torch.log(numerator / denominator)
                     
                 loss = (log_term.mean() / self.num_labels)
-                print('------@@@@Term2-------')
-                print(loss)
+                # print('------@@@@Term2-------')
+                # print(loss)
                 
                 loggerdb.log_metrics({"train/loss_mlp1_term2": loss.item()})
                 

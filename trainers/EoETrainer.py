@@ -50,16 +50,16 @@ class EoETrainer(BaseTrainer):
             logger.info(f"Current classes: {' '.join(cur_labels)}")
             
             for cur_label in cur_labels:
-                model.generate_description_genai(cur_label, self.args.dataset_name, tokenizer)
+                model.generate_description(cur_label, self.args.dataset_name, tokenizer)
             pool = model.get_description_ids(cur_labels)
             
             train_data = data.filter_and_add_desciption(cur_labels, pool) 
             train_data_old = data.filter(cur_labels, "train") 
             
             sample = train_data[0]
-            print("Anchor Sample:")
-            for key, value in sample.items():
-                print(f"  {key}: {value}") 
+            # print("Anchor Sample:")
+            # for key, value in sample.items():
+            #     print(f"  {key}: {value}") 
             
             num_train_labels = len(cur_labels)
             # print("1")
@@ -72,10 +72,10 @@ class EoETrainer(BaseTrainer):
                 train_data_mlp1_term2 = data.filler_add_old_description(seen_labels, pool_mlp1_term2, 10)
                 train_dataset_mlp1_term2 = BaseDataset(train_data_mlp1_term2)
                 
-                sample = train_data_mlp1_term2[0]
-                print("Anchor Sample MLP1 Term2:")
-                for key, value in sample.items():
-                    print(f"  {key}: {value}") 
+                # sample = train_data_mlp1_term2[0]
+                # print("Anchor Sample MLP1 Term2:")
+                # for key, value in sample.items():
+                #     print(f"  {key}: {value}") 
             
             seen_labels += cur_labels
             
