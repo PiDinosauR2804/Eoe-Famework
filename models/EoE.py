@@ -289,7 +289,6 @@ class EoE(nn.Module):
         else:
             if "return_hidden_states" in kwargs and kwargs["return_hidden_states"]:
                 # input task idx 0-9 -1:bert
-                # kwargs.update({"extract_mode": "cls"})
                 hidden_states = self.feature_extractor(
                     input_ids=input_ids,
                     attention_mask=(input_ids!=0),
@@ -303,7 +302,6 @@ class EoE(nn.Module):
             hidden_states = self.feature_extractor(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
-                # extract_mode="cls",
                 indices=None,
                 **kwargs
             )
@@ -374,8 +372,8 @@ class EoE(nn.Module):
             # print(self.num_tasks)
             # print(len(self.classifier_only_bert))
             logits = self.classifier_only_bert[self.num_tasks](hidden_states)
-            
-            # print(logits)
+            print("-------------Training Classifier MLP 2--------------------")
+            print(logits)
             if self.training:
                 offset_label = labels.to(dtype=torch.long)
                 loss = F.cross_entropy(logits, offset_label)
@@ -447,7 +445,6 @@ class EoE(nn.Module):
             input_ids=input_ids,
             attention_mask=attention_mask,
             indices=indices,
-            attribute="anchor",
             **kwargs
         )
             
