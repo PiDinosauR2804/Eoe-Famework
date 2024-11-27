@@ -413,7 +413,7 @@ class EoE(nn.Module):
                 offset_label = labels
                 loss = F.cross_entropy(logits, offset_label)
                 preds = logits.max(dim=-1)[1]
-                
+                loggerdb.log_metrics({f"train/loss_old_ce_{self.num_tasks}": loss.item()})
                 numerator_list = []
                 for class_mean in self.expert_distribution["class_mean"]:
                     numerator_list.append(torch.exp(torch.matmul(anchor_hidden_states, class_mean.unsqueeze(1)) / self.tau))
@@ -442,7 +442,7 @@ class EoE(nn.Module):
                 # print('------@@@@Term2-------')
                 # print(loss)
                 
-                loggerdb.log_metrics({f"train/loss_mlp1_term2_{self.num_tasks}": loss.item()})
+                loggerdb.log_metrics({f"train/loss_old_cr_{self.num_tasks}": (log_term.mean() / self.num_labels).item()})
                 
                 indices = indices.tolist() if isinstance(indices, torch.Tensor) else indices
                 return ExpertOutput(
@@ -467,7 +467,7 @@ class EoE(nn.Module):
             # print(logits)
             # print(offset_label)
             loss = F.cross_entropy(logits, offset_label) 
-            loggerdb.log_metrics({"train/loss_cross_entropy": loss.item()})
+            loggerdb.log_metrics({f"train/loss_cross_entropy_{self.num_tasks}": loss.item()})
             anchor_hidden_states = hidden_states
             # print("1")
             description_ids_list = {k: v for k, v in kwargs.items() if k.startswith('description_ids_')}
