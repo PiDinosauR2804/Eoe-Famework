@@ -183,7 +183,9 @@ class BaseData:
         print(labels)
         res = []
         for label in labels:
-            pools = descriptions[label]
+            pool = {}
+            if label in descriptions.keys():
+                pools = descriptions[label]
             sub_res = []
             for anchor in self.train_data[label]:
                 # print(label)
