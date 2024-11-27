@@ -220,7 +220,7 @@ class EoE(nn.Module):
 
     def load_classifier_only_bert(self, idx, save_dir):
         ckpt = torch.load(f"{save_dir}/classifier_only_bert-{idx}.pth")
-        self.classifier_only_bert[idx].load_state_dict(ckpt["classifier"])
+        self.classifier_only_bert[idx].load_state_dict(ckpt["classifier_only_bert"])
 
     def new_statistic(self, mean, cov, task_mean, task_cov, expert_id=0):
         expert_id = self.shift_expert_id(expert_id)
@@ -289,7 +289,7 @@ class EoE(nn.Module):
         else:
             if "return_hidden_states" in kwargs and kwargs["return_hidden_states"]:
                 # input task idx 0-9 -1:bert
-                kwargs.update({"extract_mode": "cls"})
+                # kwargs.update({"extract_mode": "cls"})
                 hidden_states = self.feature_extractor(
                     input_ids=input_ids,
                     attention_mask=(input_ids!=0),
@@ -302,14 +302,22 @@ class EoE(nn.Module):
             
             hidden_states = self.feature_extractor(
                 input_ids=input_ids,
+                attention_mask=attention_mask,
+                # extract_mode="cls",
+                indices=None,
                 **kwargs
             )
 
             logits = self.classifier_only_bert[-1](hidden_states)
-            
+            print("--------classifier_only_bert-----")
+            print(logits)
             pred = logits.argmax(dim=1)
             indices = pred.to(self.device)
-
+            print("Ground truth Task")
+            print(labels)
+            print("Predict Task Task")
+            print(indices)
+            
             if oracle:
                 task_idx = kwargs["task_idx"]
                 indices_task_id = torch.LongTensor([task_idx] * batch_size).to(self.device)
@@ -319,9 +327,9 @@ class EoE(nn.Module):
             
             # print(indices_task_id) 
                 
-                
             hidden_states_final = self.feature_extractor(
                 input_ids=input_ids,
+                attention_mask=attention_mask,
                 indices=indices_task_id,
                 **kwargs
             )
@@ -336,15 +344,20 @@ class EoE(nn.Module):
                 hs = hidden_states_final[i].unsqueeze(0)
                 logits = classifier(hs)
                 logits_list.append(logits)
-
+            # print("-------------Classifier--------------------")
+            # print(logits)
             # Kết hợp logits từ tất cả các mẫu
             logits_final = torch.cat(logits_list, dim=0)
 
             # Lấy dự đoán cuối cùng
             preds = logits_final.argmax(dim=-1)
+            print("Grouth Truth Class")
+            print(labels)
+            print("Predict Label")
+            print(preds)
             
             preds = preds.cpu().numpy()
-            indices = indices.cpu().numpy()
+            indices_task_id = indices_task_id.cpu().numpy()
             # print("-----------------------------------")
             # print(preds)
             # print(indices)
@@ -352,13 +365,16 @@ class EoE(nn.Module):
             # Chuyển đổi indices thành 
             return ExpertOutput(
                 preds=preds,
-                indices=indices
+                indices=indices_task_id
             )
 
         if "mlp2" in kwargs and kwargs["mlp2"]:
             hidden_states = input_ids
-            # print(input_ids)
+            # print("train--------------MLP2")
+            # print(self.num_tasks)
+            # print(len(self.classifier_only_bert))
             logits = self.classifier_only_bert[self.num_tasks](hidden_states)
+            
             # print(logits)
             if self.training:
                 offset_label = labels.to(dtype=torch.long)
@@ -366,6 +382,7 @@ class EoE(nn.Module):
             
             logits = logits[:, :]
             preds = logits.max(dim=-1)[1]
+            
             
             loggerdb.log_metrics({"train/mlp2": loss.item()})
             
@@ -376,7 +393,6 @@ class EoE(nn.Module):
                 hidden_states=hidden_states,
                 indices=indices,
             )
-        
         
         # only for training
         
@@ -436,7 +452,8 @@ class EoE(nn.Module):
         )
             
         logits = self.classifier[self.num_tasks](hidden_states)
-
+        # print("-------------Training Classifier--------------------")
+        # print(logits)
         if self.training:
             offset_label = labels
             loss = F.cross_entropy(logits, offset_label) 

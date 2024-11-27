@@ -22,7 +22,7 @@ class BaseHidden:
             ins = {
                 'input_ids':sample.tolist(),
                 'labels': labels,
-                'float_check': 1,
+                'float_check': True,
             }
             res.append(ins)
         return res
@@ -183,7 +183,7 @@ class BaseData:
         print(labels)
         res = []
         for label in labels:
-            pool = {}
+            pools = {}
             if label in descriptions.keys():
                 pools = descriptions[label]
             sub_res = []
@@ -229,7 +229,9 @@ class BaseData:
         print(labels)
         res = []
         for label in labels:
-            pools = descriptions[label]
+            pools = {}
+            if label in descriptions.keys():
+                pools = descriptions[label]
             sub_res = []
             cur_label = self.label2id[label]
             if cur_label in ['P26', 'P3373', 'per:siblings', 'org:alternate_names', 'per:spouse',
