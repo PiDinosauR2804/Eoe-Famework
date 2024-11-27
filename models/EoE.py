@@ -71,6 +71,18 @@ class EoE(nn.Module):
         
         self.triplet_loss_fn = nn.TripletMarginLoss(margin=1.0, p=2)
 
+    def take_generate_description_genai_from_file(self, label, dataset_name, tokenizer):
+        if dataset_name.lower() == 'fewrel':
+            file_path = 'datasets/FewRel/prompt_label/lb2des_fewrel.json'
+            with open(file_path, 'r', encoding='utf-8') as json_file:
+                data = json.load(json_file)
+                
+        raw_descriptions = data[label][:self.number_description]
+        
+        # Lưu mô tả nhãn vào label_description        
+        self.label_description[label] = [self.preprocess_text(desc) for desc in raw_descriptions]
+        self.label_description_ids[label] = [self.preprocess_tokenize_desciption(desc, tokenizer) for desc in self.label_description[label]]
+
     def generate_description_genai(self, label, dataset_name, tokenizer):
         if dataset_name.lower() == 'fewrel':
             file_path = 'datasets/FewRel/pid2name.json'

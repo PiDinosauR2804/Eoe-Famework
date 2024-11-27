@@ -50,7 +50,7 @@ class EoETrainer(BaseTrainer):
             logger.info(f"Current classes: {' '.join(cur_labels)}")
             
             for cur_label in cur_labels:
-                model.generate_description(cur_label, self.args.dataset_name, tokenizer)
+                model.take_generate_description_genai_from_file(cur_label, self.args.dataset_name, tokenizer)
             pool = model.get_description_ids(cur_labels)
             
             train_data = data.filter_and_add_desciption(cur_labels, pool) 
@@ -69,7 +69,7 @@ class EoETrainer(BaseTrainer):
             
             if self.task_idx != 0:
                 pool_mlp1_term2 = model.get_description_ids(seen_labels)
-                train_data_mlp1_term2 = data.filler_add_old_description(seen_labels, pool_mlp1_term2, 30)
+                train_data_mlp1_term2 = data.filler_add_old_description(seen_labels, pool_mlp1_term2, 64)
                 train_dataset_mlp1_term2 = BaseDataset(train_data_mlp1_term2)
                 
                 # sample = train_data_mlp1_term2[0]
