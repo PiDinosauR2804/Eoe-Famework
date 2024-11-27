@@ -49,8 +49,8 @@ class EoETrainer(BaseTrainer):
             logger.info(f"***** Task-{task_idx + 1} *****")
             logger.info(f"Current classes: {' '.join(cur_labels)}")
             
-            # for cur_label in cur_labels:
-            #     model.generate_description(cur_label, self.args.dataset_name, tokenizer)
+            for cur_label in cur_labels:
+                model.generate_description(cur_label, self.args.dataset_name, tokenizer)
             pool = model.get_description_ids(cur_labels)
             
             train_data = data.filter_and_add_desciption(cur_labels, pool) 
@@ -83,8 +83,8 @@ class EoETrainer(BaseTrainer):
             # print("2")
             # print(tokenizer.vocab_size)
             if self.task_idx == 0:
-                # expert_model = f"./ckpt/{self.args.dataset_name}_{seed}_{self.args.augment_type}.pth"
-                expert_model = f"/content/drive/MyDrive/FewRel_2021_all.pth"
+                expert_model = f"./ckpt/{self.args.dataset_name}_{seed}_{self.args.augment_type}.pth"
+                # expert_model = f"/content/drive/MyDrive/FewRel_2021_all.pth"
                 model.load_expert_model(expert_model)
                 logger.info(f"load first task model from {expert_model}")
             else:
@@ -100,12 +100,12 @@ class EoETrainer(BaseTrainer):
             
             print(model.num_labels)
             
-            # if self.task_idx != 0:
-            #     self.train(
-            #         model=model,
-            #         train_dataset=train_dataset_mlp1_term2,
-            #         data_collator=default_data_collator
-            #     )
+            if self.task_idx != 0:
+                self.train(
+                    model=model,
+                    train_dataset=train_dataset_mlp1_term2,
+                    data_collator=default_data_collator
+                )
             baseHidden = BaseHidden(model.num_labels, model.expert_distribution['class_mean'], model.expert_distribution['accumulate_cov'])
             hidden_data = baseHidden.generate_hidden_data()
             hidden_dataset = BaseDataset(hidden_data)
@@ -115,10 +115,10 @@ class EoETrainer(BaseTrainer):
             # for key, value in sample.items():
             #     print(f"  {key}: {value}") 
                
-            print("-------------Before MLP 2")
-            print("Before MLP2")
-            print(len(model.classifier_only_bert))
-            print(model.classifier_only_bert[-1])
+            # print("-------------Before MLP 2")
+            # print("Before MLP2")
+            # print(len(model.classifier_only_bert))
+            # print(model.classifier_only_bert[-1])
             # for idx, mean in enumerate(model.expert_distribution['class_mean']):
             #     print(idx)
             #     print(mean)       
@@ -129,9 +129,9 @@ class EoETrainer(BaseTrainer):
                 data_collator=float_data_collator
             )
             
-            print("After MLP2")
-            print(len(model.classifier_only_bert))
-            print(model.classifier_only_bert[-1])
+            # print("After MLP2")
+            # print(len(model.classifier_only_bert))
+            # print(model.classifier_only_bert[-1])
             
             # print("-------------After MLP 2")
             # for idx, mean in enumerate(model.expert_distribution['class_mean']):
