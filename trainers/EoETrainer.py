@@ -56,7 +56,7 @@ class EoETrainer(BaseTrainer):
             train_data = data.filter_and_add_desciption(cur_labels, pool) 
             train_data_old = data.filter(cur_labels, "train") 
             
-            sample = train_data[0]
+            # sample = train_data[0]
             # print("Anchor Sample:")
             # for key, value in sample.items():
             #     print(f"  {key}: {value}") 
@@ -69,7 +69,7 @@ class EoETrainer(BaseTrainer):
             
             if self.task_idx != 0:
                 pool_mlp1_term2 = model.get_description_ids(seen_labels)
-                train_data_mlp1_term2 = data.filler_add_old_description(seen_labels, pool_mlp1_term2, 10)
+                train_data_mlp1_term2 = data.filler_add_old_description(seen_labels, pool_mlp1_term2, 30)
                 train_dataset_mlp1_term2 = BaseDataset(train_data_mlp1_term2)
                 
                 # sample = train_data_mlp1_term2[0]
@@ -113,30 +113,13 @@ class EoETrainer(BaseTrainer):
             # sample = hidden_data[0]
             # print("Anchor Sample:")
             # for key, value in sample.items():
-            #     print(f"  {key}: {value}") 
-               
-            # print("-------------Before MLP 2")
-            # print("Before MLP2")
-            # print(len(model.classifier_only_bert))
-            # print(model.classifier_only_bert[-1])
-            # for idx, mean in enumerate(model.expert_distribution['class_mean']):
-            #     print(idx)
-            #     print(mean)       
+            #     print(f"  {key}: {value}")      
                 
             self.train_mlp2(
                 model=model,
                 train_dataset=hidden_dataset,
                 data_collator=float_data_collator
-            )
-            
-            # print("After MLP2")
-            # print(len(model.classifier_only_bert))
-            # print(model.classifier_only_bert[-1])
-            
-            # print("-------------After MLP 2")
-            # for idx, mean in enumerate(model.expert_distribution['class_mean']):
-            #     print(idx)
-            #     print(mean)       
+            )      
 
             os.makedirs(f"./ckpt/{self.args.dataset_name}-{seed}-{self.args.augment_type}", exist_ok=True)
             model.save_classifier(
@@ -149,8 +132,6 @@ class EoETrainer(BaseTrainer):
                 save_dir=f"./ckpt/{self.args.dataset_name}-{seed}-{self.args.augment_type}",
                 save=True,
             )
-            # print("5")
-            # print(tokenizer.vocab_size)
             cur_test_data = data.filter(cur_labels, 'test')
             history_test_data = data.filter(seen_labels, 'test')
 
@@ -177,6 +158,9 @@ class EoETrainer(BaseTrainer):
             all_cur_acc.append(cur_acc)
             all_total_acc.append(total_acc)
             all_total_hit.append(total_hit)
+            loggerdb.log_metrics({"train/all_cur_acc": cur_acc})
+            loggerdb.log_metrics({"train/all_total_acc": total_acc})
+            loggerdb.log_metrics({"train/all_total_hit": total_hit})
 
         # save distribution
         save_data = {

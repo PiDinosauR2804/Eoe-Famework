@@ -375,8 +375,8 @@ class EoE(nn.Module):
             # print(self.num_tasks)
             # print(len(self.classifier_only_bert))
             logits = self.classifier_only_bert[self.num_tasks](hidden_states)
-            print("-------------Training Classifier MLP 2--------------------")
-            print(logits)
+            # print("-------------Training Classifier MLP 2--------------------")
+            # print(logits)
             if self.training:
                 offset_label = labels.to(dtype=torch.long)
                 loss = F.cross_entropy(logits, offset_label)
@@ -385,7 +385,7 @@ class EoE(nn.Module):
             preds = logits.max(dim=-1)[1]
             
             
-            loggerdb.log_metrics({"train/mlp2": loss.item()})
+            loggerdb.log_metrics({"train/mlp2_{self.num_tasks}": loss.item()})
             
             indices = indices.tolist() if isinstance(indices, torch.Tensor) else indices
             return ExpertOutput(
@@ -402,7 +402,6 @@ class EoE(nn.Module):
         if self.training:
             if "mlp1_term2" in kwargs:
                             
-                
                 anchor_hidden_states = self.feature_extractor(
                     input_ids=input_ids,
                     attention_mask=attention_mask,
@@ -417,34 +416,34 @@ class EoE(nn.Module):
                 loss = F.cross_entropy(logits, offset_label)
                 preds = logits.max(dim=-1)[1]
                 
-                # numerator_list = []
-                # for class_mean in self.expert_distribution["class_mean"]:
-                #     numerator_list.append(torch.exp(torch.matmul(anchor_hidden_states, class_mean.unsqueeze(1)) / self.tau))
-                # # numerator = torch.sum(torch.stack(numerator_list))
+                numerator_list = []
+                for class_mean in self.expert_distribution["class_mean"]:
+                    numerator_list.append(torch.exp(torch.matmul(anchor_hidden_states, class_mean.unsqueeze(1)) / self.tau))
+                # numerator = torch.sum(torch.stack(numerator_list))
                 
-                # # Compute denominator: sum(exp(h · h' / τ)) + sum(exp(h · μ_c / τ))
-                # denominator_list = []
+                # Compute denominator: sum(exp(h · h' / τ)) + sum(exp(h · μ_c / τ))
+                denominator_list = []
                 
-                # stack_u_c = []
-                # for label in labels:
-                #     u_c = self.expert_distribution["class_mean"][label]
-                #     stack_u_c.append(u_c)
-                # stack_u_c = torch.stack(stack_u_c)
+                stack_u_c = []
+                for label in labels:
+                    u_c = self.expert_distribution["class_mean"][label]
+                    stack_u_c.append(u_c)
+                stack_u_c = torch.stack(stack_u_c)
                 
-                # denominator_list.append(torch.exp((anchor_hidden_states * stack_u_c).sum(dim=1, keepdim=True) / self.tau))
-                # denominator_list.extend(numerator_list)  # Add numerator terms for μ_c
-                # denominator = torch.sum(torch.stack(denominator_list))
+                denominator_list.append(torch.exp((anchor_hidden_states * stack_u_c).sum(dim=1, keepdim=True) / self.tau))
+                denominator_list.extend(numerator_list)  # Add numerator terms for μ_c
+                denominator = torch.sum(torch.stack(denominator_list))
 
-                # # Compute log term
-                # log_term = torch.zeros(batch_size, 1, device=self.device)
-                # for numerator in numerator_list:
-                #     log_term += torch.log(numerator / denominator)
+                # Compute log term
+                log_term = torch.zeros(batch_size, 1, device=self.device)
+                for numerator in numerator_list:
+                    log_term += torch.log(numerator / denominator)
                     
-                # loss = (log_term.mean() / self.num_labels)
+                loss += (log_term.mean() / self.num_labels).item()
                 # print('------@@@@Term2-------')
                 # print(loss)
                 
-                loggerdb.log_metrics({"train/loss_mlp1_term2": loss.item()})
+                loggerdb.log_metrics({"train/loss_mlp1_term2_{self.num_tasks}": loss.item()})
                 
                 indices = indices.tolist() if isinstance(indices, torch.Tensor) else indices
                 return ExpertOutput(
