@@ -45,5 +45,3 @@ hydra:
   run:
     dir: "${training_args.output_dir}/${task_args.dataset_name}_${training_args.model_name}_${training_args.exp_name}_${now:%Y-%m-%d_%H-%M-%S}"
   output_subdir: "hydra_outputs"
-  job_logging: disabled
-  hydra_logging: disabled

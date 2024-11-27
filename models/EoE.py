@@ -147,7 +147,10 @@ class EoE(nn.Module):
     def get_description_ids(self, labels):
         pool = {}
         for label in labels:
-            pool[label] = copy.deepcopy(self.label_description_ids[label])
+            if label in self.label_description_ids.keys():
+                pool[label] = copy.deepcopy(self.label_description_ids[label])
+            else:
+                print("Not Found")
         return pool
 
     def load_expert_model(self, expert_model):
