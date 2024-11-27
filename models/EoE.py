@@ -180,8 +180,7 @@ class EoE(nn.Module):
         
         if self.num_tasks > 0:
             with torch.no_grad():
-                # Copy old weights to the new classifier
-                
+                # Copy old weights to the new classifier                
                 new_classifier.weight[:self.num_old_labels, :] = self.classifier[self.num_tasks-1].weight
                 new_classifier.bias[:self.num_old_labels] = self.classifier[self.num_tasks-1].bias
                 
@@ -425,20 +424,21 @@ class EoE(nn.Module):
                 
                 stack_u_c = []
                 for label in labels:
-                    u_c = self.expert_distribution["class_mean"][label]
+                    idx = label.item() if isinstance(label, torch.Tensor) else label
+                    u_c = self.expert_distribution["class_mean"][idx]
                     stack_u_c.append(u_c)
                 stack_u_c = torch.stack(stack_u_c)
                 
                 denominator_list.append(torch.exp((anchor_hidden_states * stack_u_c).sum(dim=1, keepdim=True) / self.tau))
                 denominator_list.extend(numerator_list)  # Add numerator terms for μ_c
-                denominator = torch.sum(torch.stack(denominator_list))
+                denominator = torch.sum(torch.stack(denominator_list), dim=0)
 
                 # Compute log term
                 log_term = torch.zeros(batch_size, 1, device=self.device)
                 for numerator in numerator_list:
                     log_term += torch.log(numerator / denominator)
                     
-                loss += (log_term.mean() / self.num_labels).item()
+                loss += (log_term.mean() / self.num_labels).squeeze(0)
                 # print('------@@@@Term2-------')
                 # print(loss)
                 
@@ -464,6 +464,8 @@ class EoE(nn.Module):
         # print(logits)
         if self.training:
             offset_label = labels
+            # print(logits)
+            # print(offset_label)
             loss = F.cross_entropy(logits, offset_label) 
             loggerdb.log_metrics({"train/loss_cross_entropy": loss.item()})
             anchor_hidden_states = hidden_states
@@ -471,7 +473,6 @@ class EoE(nn.Module):
             description_ids_list = {k: v for k, v in kwargs.items() if k.startswith('description_ids_')}
             total_log_term = torch.zeros(1, device=self.device)
             for k, v in description_ids_list.items():
-                # print("2")
                 description_hidden_states = self.feature_extractor(
                     input_ids=v,
                     attention_mask=(v != 0),
@@ -500,7 +501,7 @@ class EoE(nn.Module):
                 
                 denominator_list.append(torch.exp((anchor_hidden_states * description_hidden_states).sum(dim=1, keepdim=True) / self.tau))
                 denominator_list.extend(numerator_list)  # Add numerator terms for μ_c
-                denominator = torch.sum(torch.stack(denominator_list))
+                denominator = torch.sum(torch.stack(denominator_list), dim=0)
                 # print("5")
                 # Compute log term
                 log_term = torch.zeros(batch_size, 1, device=self.device)
@@ -516,7 +517,7 @@ class EoE(nn.Module):
             # print("7")
             # print("----@@@@@@@@-------")
             # print(total_log_term / len(description_ids_list))
-            loss += (total_log_term / len(description_ids_list)).item()
+            loss += (total_log_term / len(description_ids_list)).squeeze(0)
         # logger.log_metrics({"train/loss": loss})
         loggerdb.log_metrics({f"train/cr_loss_{self.num_tasks}": (total_log_term / len(description_ids_list)).item()})
         loggerdb.log_metrics({f"train/total_loss_{self.num_tasks}": loss.item()})
