@@ -343,7 +343,7 @@ class EoE(nn.Module):
                 classifier = self.classifier[idx]
                 hs = hidden_states_final[i].unsqueeze(0)
                 logits = classifier(hs)
-                print(logits)
+                # print(logits)
                 logits_list.append(logits)
             # print("-------------Classifier MLP 1--------------------")
             # print(logits)
@@ -385,7 +385,7 @@ class EoE(nn.Module):
             preds = logits.max(dim=-1)[1]
             
             
-            loggerdb.log_metrics({"train/mlp2_{self.num_tasks}": loss.item()})
+            loggerdb.log_metrics({f"train/mlp2_{self.num_tasks}": loss.item()})
             
             indices = indices.tolist() if isinstance(indices, torch.Tensor) else indices
             return ExpertOutput(
@@ -400,8 +400,7 @@ class EoE(nn.Module):
         loss = None
         
         if self.training:
-            if "mlp1_term2" in kwargs:
-                            
+            if "mlp1_term2" in kwargs: 
                 anchor_hidden_states = self.feature_extractor(
                     input_ids=input_ids,
                     attention_mask=attention_mask,
@@ -443,7 +442,7 @@ class EoE(nn.Module):
                 # print('------@@@@Term2-------')
                 # print(loss)
                 
-                loggerdb.log_metrics({"train/loss_mlp1_term2_{self.num_tasks}": loss.item()})
+                loggerdb.log_metrics({f"train/loss_mlp1_term2_{self.num_tasks}": loss.item()})
                 
                 indices = indices.tolist() if isinstance(indices, torch.Tensor) else indices
                 return ExpertOutput(
@@ -519,8 +518,8 @@ class EoE(nn.Module):
             # print(total_log_term / len(description_ids_list))
             loss += (total_log_term / len(description_ids_list)).item()
         # logger.log_metrics({"train/loss": loss})
-        loggerdb.log_metrics({"train/cr_loss": (total_log_term / len(description_ids_list)).item()})
-        loggerdb.log_metrics({"train/total_loss": loss.item()})
+        loggerdb.log_metrics({f"train/cr_loss_{self.num_tasks}": (total_log_term / len(description_ids_list)).item()})
+        loggerdb.log_metrics({f"train/total_loss_{self.num_tasks}": loss.item()})
         preds = logits.max(dim=-1)[1]
                 
         indices = indices.tolist() if isinstance(indices, torch.Tensor) else indices
