@@ -53,7 +53,8 @@ class EoETrainer(BaseTrainer):
                 model.take_generate_description_genai_from_file(cur_label, self.args.dataset_name, tokenizer)
             pool = model.get_description_ids(cur_labels)
             
-            train_data = data.filter_and_add_desciption(cur_labels, pool) 
+            old_pool = model.get_description_ids(seen_labels)
+            train_data = data.filter_and_add_desciption_and_old_description(cur_labels, pool, seen_labels, old_pool) 
             train_data_old = data.filter(cur_labels, "train") 
             
             # sample = train_data[0]
@@ -66,16 +67,6 @@ class EoETrainer(BaseTrainer):
             # print(tokenizer.vocab_size)
             train_dataset = BaseDataset(train_data)
             train_dataset_old = BaseDataset(train_data_old)     
-            
-            if self.task_idx != 0:
-                pool_mlp1_term2 = model.get_description_ids(seen_labels)
-                train_data_mlp1_term2 = data.filler_add_old_description(seen_labels, pool_mlp1_term2, 64)
-                train_dataset_mlp1_term2 = BaseDataset(train_data_mlp1_term2)
-                
-                # sample = train_data_mlp1_term2[0]
-                # print("Anchor Sample MLP1 Term2:")
-                # for key, value in sample.items():
-                #     print(f"  {key}: {value}") 
             
             seen_labels += cur_labels
             
@@ -94,36 +85,44 @@ class EoETrainer(BaseTrainer):
                     data_collator=default_data_collator
                 )
                 
-            # print("3")
-            # print(tokenizer.vocab_size)
             self.statistic(model, train_dataset_old, default_data_collator)
             
-            print(model.num_labels)
+            # print(model.num_labels)
             
-            if self.task_idx != 0:
-                self.train(
-                    model=model,
-                    train_dataset=train_dataset_mlp1_term2,
-                    data_collator=default_data_collator
-                )
             
-            print(model.expert_distribution['class_mean'])
-            print(model.expert_distribution['accumulate_cov_shared'])
-            baseHidden = BaseHidden(model.num_labels, model.expert_distribution['class_mean'], model.expert_distribution['accumulate_cov_shared'])
-            hidden_data = baseHidden.generate_hidden_data()
-            hidden_dataset = BaseDataset(hidden_data)
-                        
-            # sample = hidden_data[0]
-            # print("Anchor Sample:")
-            # for key, value in sample.items():
-            #     print(f"  {key}: {value}")      
+            # print(model.un_expert_distribution['class_mean'])
+            # print(model.un_expert_distribution['accumulate_cov_shared'])
+            baseUnHidden = BaseHidden(model.num_labels, model.un_expert_distribution['class_mean'], model.un_expert_distribution['accumulate_cov_shared'])
+            un_hidden_data = baseUnHidden.generate_hidden_data()
+            un_hidden_dataset = BaseDataset(un_hidden_data)  
                 
-            self.train_mlp2(
+            self.train_mlp(
                 model=model,
-                train_dataset=hidden_dataset,
-                data_collator=float_data_collator
+                train_dataset=un_hidden_dataset,
+                data_collator=float_data_collator,
+                training_mlp2=True
             )      
 
+            # print(model.classifier[-1].weight)
+            # print("----------------------instructed representation----------------------")
+            # print(model.in_expert_distribution['class_mean'])
+            # print(model.in_expert_distribution['accumulate_cov_shared'])
+            
+            # print("----------------------uninstructed representation----------------------")
+            # print(model.un_expert_distribution['class_mean'])
+            # print(model.un_expert_distribution['accumulate_cov_shared'])
+            baseInHidden = BaseHidden(model.num_labels, model.in_expert_distribution['class_mean'], model.in_expert_distribution['accumulate_cov_shared'])
+            in_hidden_data = baseInHidden.generate_hidden_data()
+            in_hidden_dataset = BaseDataset(in_hidden_data)  
+                
+            self.train_mlp(
+                model=model,
+                train_dataset=in_hidden_dataset,
+                data_collator=float_data_collator,
+                training_mlp2=False
+            ) 
+            
+            
             os.makedirs(f"./ckpt/{self.args.dataset_name}-{seed}-{self.args.augment_type}", exist_ok=True)
             model.save_classifier(
                 idx=self.task_idx,
@@ -167,7 +166,7 @@ class EoETrainer(BaseTrainer):
 
         # save distribution
         save_data = {
-            "distribution": model.expert_distribution,
+            "distribution": model.un_expert_distribution,
             "seen_labels": seen_labels,
             "label2id": data.label2id,
         }
@@ -247,7 +246,7 @@ class EoETrainer(BaseTrainer):
 
         progress_bar.close()
         
-    def train_mlp2(self, model, train_dataset, data_collator):
+    def train_mlp(self, model, train_dataset, data_collator, training_mlp2):
         train_dataloader = DataLoader(
             train_dataset,
             batch_size=self.args.train_batch_size,
@@ -289,7 +288,11 @@ class EoETrainer(BaseTrainer):
                 self.optimizer.zero_grad()
 
                 inputs = {k: v.to(self.args.device) for k, v in inputs.items()}
-                inputs.update({"mlp2": True})
+                inputs.update({"training_mlp": True})
+                if training_mlp2:
+                    inputs.update({"mlp2": True})
+                else:
+                    inputs.update({"mlp1": True})
 
                 outputs = model(**inputs)
                 loss = outputs.loss
@@ -379,11 +382,14 @@ class EoETrainer(BaseTrainer):
         return acc, hit_acc
 
     def statistic(self, model, dataset, data_collator):
-        mean, cov, task_mean, task_cov = self.get_mean_and_cov(model, dataset, data_collator, self.task_idx)
-        model.new_statistic(mean, cov, task_mean, task_cov, self.task_idx)
+        un_mean, un_cov, un_task_mean, un_task_cov = self.get_mean_and_cov(model, dataset, data_collator, False, self.task_idx)
+        model.new_statistic_uninstructed_representation(un_mean, un_cov, un_task_mean, un_task_cov, self.task_idx)
+        
+        in_mean, in_cov, in_task_mean, in_task_cov = self.get_mean_and_cov(model, dataset, data_collator, True, self.task_idx)
+        model.new_statistic_instructed_representation(in_mean, in_cov, in_task_mean, in_task_cov, self.task_idx)
 
     @torch.no_grad()
-    def get_mean_and_cov(self, model, dataset, data_collator, expert_id=0):
+    def get_mean_and_cov(self, model, dataset, data_collator, instructed_representation, expert_id=0):
         loader = DataLoader(
             dataset,
             batch_size=self.args.eval_batch_size,
@@ -398,6 +404,8 @@ class EoETrainer(BaseTrainer):
         for step, inputs in enumerate(loader):
             label = inputs.pop('labels')
             inputs = {k: v.to(self.args.device) for k, v in inputs.items()}
+            if instructed_representation:
+                inputs.update({"instructed_representation": True})
             inputs.update({"return_hidden_states": True})
             inputs.update({"task_idx": expert_id})
 
