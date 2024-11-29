@@ -34,9 +34,9 @@ class EoE(nn.Module):
         self.tau = 0.8
         self.feature_extractor = PeftFeatureExtractor(config)
         
-        self.weight_ce_wtp = 1/3
-        self.weight_cr_wtp = 1/3
-        self.weight_old_cr_wtp = 1/3
+        self.weight_ce_wtp = 0.6
+        self.weight_cr_wtp = 0.2
+        self.weight_old_cr_wtp = 0.2
         
         self.num_old_labels = 0
         self.num_labels = 0
