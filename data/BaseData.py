@@ -33,7 +33,7 @@ class BaseHidden:
             labels = idx
             mean = self.means[idx].cpu().numpy()
             cov = self.covariance.cpu().numpy()
-            samples = self.generate_data_base_on_means_and_cov(labels, mean, cov, 128)
+            samples = self.generate_data_base_on_means_and_cov(labels, mean, cov, 192)
             res.extend(samples)
         return res
             
@@ -246,6 +246,61 @@ class BaseData:
                     }
                     sub_res.append(ins)
             res += sub_res
+        return res
+    
+    def filter_and_add_desciption_and_old_description(self, labels, descriptions, seen_labels, old_descriptions):
+        if not isinstance(labels, list):
+            labels = [labels]
+        print(labels)
+        res = []
+        lenght_seen_labels = len(seen_labels)
+        count_negative_label = 0
+        for label in labels:
+            pools = {}
+            if label in descriptions.keys():
+                pools = descriptions[label]
+            sub_res = []
+            for anchor in self.train_data[label]:
+                cur_label = anchor["labels"]
+                if cur_label in ['P26', 'P3373', 'per:siblings', 'org:alternate_names', 'per:spouse',
+                                        'per:alternate_names', 'per:other_family']:
+                    continue
+                
+                ins = {
+                    'input_ids': anchor['input_ids'],  # default: add marker to the head entity and tail entity
+                    'subject_marker_st': anchor['subject_marker_st'],
+                    'object_marker_st': anchor['object_marker_st'],
+                    'labels': anchor['labels'],
+                    'input_ids_without_marker': anchor['input_ids_without_marker'],
+                    'subject_st': anchor['subject_st'],
+                    'subject_ed': anchor['subject_ed'],
+                    'object_st': anchor['object_st'],
+                    'object_ed': anchor['object_ed'],
+                }
+                
+                for idx, pool in enumerate(pools):
+                    ins.update({
+                        f'description_ids_{idx}': pool
+                    })
+                if lenght_seen_labels != 0:
+                    old_labels = seen_labels[count_negative_label%lenght_seen_labels]
+                    ins.update({
+                            'old_labels': self.label2id[old_labels]
+                        })
+                    old_pools = {}
+                    if old_labels in old_descriptions.keys():
+                        old_pools = old_descriptions[old_labels]
+                        
+                    for idx, pool in enumerate(old_pools):
+                        ins.update({
+                            f'old_description_ids_{idx}': pool
+                        })
+                
+                count_negative_label += 1
+                sub_res.append(ins)
+            res += sub_res
+        for idx in range(len(res)):
+            res[idx]["labels"] = self.label2id[res[idx]["labels"]]
         return res
 
 class BaseDataset(Dataset):
