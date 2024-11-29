@@ -1,6 +1,7 @@
 import copy
 import math
 import json
+from scipy.spatial.distance import cdist
 from collections import Counter
 from dataclasses import dataclass
 from typing import Optional, Tuple
@@ -32,6 +33,10 @@ class EoE(nn.Module):
         self.max_expert = config.max_expert if config.max_expert != -1 else float("inf")
         self.tau = 0.8
         self.feature_extractor = PeftFeatureExtractor(config)
+        
+        self.weight_ce_wtp = 1/3
+        self.weight_cr_wtp = 1/3
+        self.weight_old_cr_wtp = 1/3
         
         self.num_old_labels = 0
         self.num_labels = 0
@@ -133,6 +138,22 @@ class EoE(nn.Module):
         # Lưu mô tả nhãn vào label_description        
         self.label_description[label] = [self.preprocess_text(desc) for desc in raw_descriptions]
         self.label_description_ids[label] = [self.preprocess_tokenize_desciption(desc, tokenizer) for desc in self.label_description[label]]
+
+    def take_generate_description_MrLinh_from_file(self, label, idx_label, dataset_name, tokenizer):
+        if dataset_name.lower() == 'fewrel':
+            file_path = 'datasets/FewRel/prompt_label/FewRel/relation_description_detail_10.txt'
+        if dataset_name.lower() == 'tacred':
+            file_path = 'datasets/TACRED/prompt_label/TACRED/relation_description_detail_10.txt'
+        with open(file_path, 'r', encoding='utf-8') as file:
+            data = file.readlines()
+                
+
+        raw_descriptions = data[idx_label][:self.number_description]
+        
+        # Lưu mô tả nhãn vào label_description        
+        self.label_description[label] = [self.preprocess_text(desc) for desc in raw_descriptions]
+        self.label_description_ids[label] = [self.preprocess_tokenize_desciption(desc, tokenizer) for desc in self.label_description[label]]
+
 
     def generate_description_from_file(self, label, dataset_name, tokenizer):
         if dataset_name.lower() == 'fewrel':
@@ -301,6 +322,12 @@ class EoE(nn.Module):
 
         return indices, scores_over_tasks, class_indices_over_tasks
 
+    def get_weight_euclide_distance(self, hidden_states, means):
+        distance_matrix = cdist(hidden_states, means, metric='euclidean')
+        A_inverse = 1 / distance_matrix
+        A_normalized = A_inverse / A_inverse.sum(axis=1, keepdims=True)
+        return
+
     def forward(self, input_ids, attention_mask=None, labels=None, oracle=False, **kwargs):
 
         batch_size, _ = input_ids.shape
@@ -428,7 +455,7 @@ class EoE(nn.Module):
         # print(logits)
         if self.training:
             offset_label = labels
-            loss = 1/3 * F.cross_entropy(logits, offset_label) 
+            loss = self.weight_ce_wtp * F.cross_entropy(logits, offset_label) 
             # print("----CE Loss-------")
             # print(loss.item())
             loggerdb.log_metrics({f"train/loss_cross_entropy_{self.num_tasks}": loss.item()})
@@ -469,7 +496,7 @@ class EoE(nn.Module):
             # print("7")
             # print("----CR Loss-------")
             # print((total_log_term / len(description_ids_list)).item())
-            loss += 1/3 * (total_log_term / len(description_ids_list)).squeeze(0)
+            loss += self.weight_cr_wtp *  (total_log_term / len(description_ids_list)).squeeze(0)
         
             
             old_description_ids_list = {k: v for k, v in kwargs.items() if k.startswith('old_description_ids_')}
@@ -515,7 +542,7 @@ class EoE(nn.Module):
                 # print(self.num_labels)
                 total_old_log_term += (log_term.mean() / self.num_old_labels)
             
-            loss += 1/3 * (total_old_log_term / len(old_description_ids_list)).squeeze(0)
+            loss += self.weight_old_cr_wtp * (total_old_log_term / len(old_description_ids_list)).squeeze(0)
             # print("----Old CR Loss-------")
             # print((total_old_log_term / len(old_description_ids_list)).item())
                         
