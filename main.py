@@ -54,7 +54,7 @@ wandb_api_key = "0806b2d5c00870a95f366d95c825d7680649abb7"  # Thay YOUR_WANDB_AP
 
 # 1. Khởi tạo wandb
 loggerdb.initialize_wandb(
-    project_name="EOE_03_03_03", 
+    project_name="EOE_03_03_03_des_linh", 
     run_name="experiment_1", 
     api_key=wandb_api_key
 )
