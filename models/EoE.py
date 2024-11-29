@@ -144,11 +144,12 @@ class EoE(nn.Module):
             file_path = 'datasets/FewRel/prompt_label/FewRel/relation_description_detail_10.txt'
         if dataset_name.lower() == 'tacred':
             file_path = 'datasets/TACRED/prompt_label/TACRED/relation_description_detail_10.txt'
-        with open(file_path, 'r', encoding='utf-8') as file:
+            
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
             data = file.readlines()
                 
-
-        raw_descriptions = data[idx_label][:self.number_description]
+        
+        raw_descriptions = data[idx_label].split('\t')[2:2+self.number_description]
         
         # Lưu mô tả nhãn vào label_description        
         self.label_description[label] = [self.preprocess_text(desc) for desc in raw_descriptions]
