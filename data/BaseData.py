@@ -33,7 +33,7 @@ class BaseHidden:
             labels = idx
             mean = self.means[idx].cpu().numpy()
             cov = self.covariance.cpu().numpy()
-            samples = self.generate_data_base_on_means_and_cov(labels, mean, cov, 192)
+            samples = self.generate_data_base_on_means_and_cov(labels, mean, cov, 1920)
             res.extend(samples)
         return res
             

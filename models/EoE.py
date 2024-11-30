@@ -34,9 +34,9 @@ class EoE(nn.Module):
         self.tau = 0.8
         self.feature_extractor = PeftFeatureExtractor(config)
         
-        self.weight_ce_wtp = 0.6
-        self.weight_cr_wtp = 0.2
-        self.weight_old_cr_wtp = 0.2
+        self.weight_ce_wtp = 1/3
+        self.weight_cr_wtp = 1/3
+        self.weight_old_cr_wtp = 1/3
         
         self.num_old_labels = 0
         self.num_labels = 0
@@ -429,7 +429,11 @@ class EoE(nn.Module):
             logits = logits[:, :]
             preds = logits.max(dim=-1)[1]
             
-            loggerdb.log_metrics({f"train/mlp2_{self.num_tasks}": loss.item()})
+            if "mlp1" in kwargs and kwargs["mlp1"]:
+                loggerdb.log_metrics({f"train/mlp1_{self.num_tasks}": loss.item()})
+            if "mlp2" in kwargs and kwargs["mlp2"]:
+                loggerdb.log_metrics({f"train/mlp2_{self.num_tasks}": loss.item()})
+
             
             indices = indices.tolist() if isinstance(indices, torch.Tensor) else indices
             return ExpertOutput(
