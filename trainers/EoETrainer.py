@@ -6,6 +6,8 @@ import pickle
 import hydra
 import torch
 import torch.nn as nn
+import numpy as np
+from scipy.spatial.distance import cdist
 from sklearn import metrics
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
@@ -16,7 +18,7 @@ import wandb_logger as loggerdb
 
 from data import BaseDataset, BaseTripletDataset, BaseHidden
 from trainers import BaseTrainer
-from utils import CustomCollatorWithPadding, CustomFloatCollatorWithPadding, relation_data_augmentation, relation_data_augmentation_and_contrastive_learning
+from utils import CustomCollatorWithPadding, CustomFloatCollatorWithPadding, relation_data_augmentation, relation_data_augmentation_and_add_old_descriptions
 
 logger = logging.getLogger(__name__)
 
@@ -49,14 +51,25 @@ class EoETrainer(BaseTrainer):
             logger.info(f"***** Task-{task_idx + 1} *****")
             logger.info(f"Current classes: {' '.join(cur_labels)}")
             
+            train_data_old = data.filter(cur_labels, "train") 
+            
             for cur_label in cur_labels:
                 model.take_generate_description_genai_from_file(cur_label, self.args.dataset_name, tokenizer)
                 # model.take_generate_description_MrLinh_from_file(cur_label, data.label2id[cur_label], self.args.dataset_name, tokenizer)
+                
             pool = model.get_description_ids(cur_labels)
-            
             old_pool = model.get_description_ids(seen_labels)
             train_data = data.filter_and_add_desciption_and_old_description(cur_labels, pool, seen_labels, old_pool) 
-            train_data_old = data.filter(cur_labels, "train") 
+            
+            # sample = train_data[0]
+            # print("Anchor Sample:")
+            # for key, value in sample.items():
+            #     print(f"  {key}: {value}") 
+            
+            
+            aug_train_data, num_train_labels = relation_data_augmentation_and_add_old_descriptions(
+                    copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
+                )   
             
             # sample = train_data[0]
             # print("Anchor Sample:")
@@ -64,19 +77,23 @@ class EoETrainer(BaseTrainer):
             #     print(f"  {key}: {value}") 
             
             num_train_labels = len(cur_labels)
-            # print("1")
-            # print(tokenizer.vocab_size)
-            train_dataset = BaseDataset(train_data)
+
+            # train_dataset = BaseDataset(train_data)
+            train_dataset = BaseDataset(aug_train_data)
             train_dataset_old = BaseDataset(train_data_old)     
             
             seen_labels += cur_labels
+            
+            pool = model.get_description_ids(seen_labels)       
+            model.description_matrix = self.calculation_description_matrix(model, seen_labels, pool, model.number_description, default_data_collator)
+            print(model.description_matrix)
             
             model.new_task(num_train_labels)
             # print("2")
             # print(tokenizer.vocab_size)
             if self.task_idx == 0:
-                expert_model = f"./ckpt/{self.args.dataset_name}_{seed}_{self.args.augment_type}.pth"
-                # expert_model = f"/content/drive/MyDrive/FewRel_2021_all.pth"
+                # expert_model = f"./ckpt/{self.args.dataset_name}_{seed}_{self.args.augment_type}.pth"
+                expert_model = f"/content/drive/MyDrive/FewRel_2021_all.pth"
                 model.load_expert_model(expert_model)
                 logger.info(f"load first task model from {expert_model}")
             else:
@@ -307,6 +324,47 @@ class EoETrainer(BaseTrainer):
                 progress_bar.set_postfix({"Loss": loss.item()})
         
         progress_bar.close()
+
+    @torch.no_grad()
+    def calculation_description_matrix(self, model, labels, description_ids, number_description_per_label, data_collator):
+        description_ids_data = []
+        for label in labels:
+            if label in description_ids.keys():
+                for v in description_ids[label]:
+                    ins = {
+                      "input_ids": v,
+                    }
+                    description_ids_data.append(ins)
+        
+        description_data = BaseDataset(description_ids_data)
+        loader = DataLoader(
+            description_data,
+            batch_size=self.args.eval_batch_size,
+            shuffle=False,
+            collate_fn=data_collator,
+        )
+        model.eval()
+        prelogits = []
+        labels = []
+
+        for step, inputs in enumerate(loader):
+            inputs = {k: v.to(self.args.device) for k, v in inputs.items()}
+            inputs.update({"return_hidden_states_by_cls": True})
+
+            prelogit = model(**inputs)
+
+            prelogits.extend(prelogit.tolist())
+        
+        prelogits = np.array(prelogits)
+        prelogits = prelogits.reshape(-1, number_description_per_label, model.query_size)
+        prelogits = prelogits.mean(axis=1)
+        prelogits = prelogits.reshape(-1, model.query_size)
+        
+        prelogits = torch.tensor(prelogits)
+        cosine_distance_matrix = cdist(prelogits, prelogits, metric='cosine')
+        
+        return torch.tensor(cosine_distance_matrix)
+      
 
     @torch.no_grad()
     def eval(self, model, eval_dataset, data_collator, seen_labels, label2task_id, oracle=False):

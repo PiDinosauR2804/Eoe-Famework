@@ -128,6 +128,159 @@ def relation_data_augmentation(data, num_labels, id2label, marker_id=(35022, 350
     print(new_label_dict)
     return data, num_train_labels
 
+def relation_data_augmentation_and_add_old_descriptions(data, num_labels, id2label, marker_id=(35022, 35023, 35024, 35025), augment_type="all"):
+    subj_st_id, subj_ed_id, obj_st_id, obj_ed_id = marker_id
+    new_label_dict = dict()
+
+    add_reverse_relation = False
+    add_undetermined_relation = False
+    assert augment_type in ["all", "reverse", "no_rel", "none"]
+    if augment_type == "reverse":
+        add_reverse_relation = True
+    elif augment_type == "no_rel":
+        add_undetermined_relation = True
+    elif augment_type == "all":
+        add_undetermined_relation = True
+        add_reverse_relation = True
+
+    num_train_labels = num_labels
+
+    # lenght_seen_labels = len(seen_labels)
+    # count_negative_label = 0
+
+    if add_reverse_relation:
+        # reverse relation augmentation for origin data
+        augment_data = defaultdict(list)
+        for ins in data:
+            cur_label = ins["labels"]
+            if id2label[cur_label] in ['P26', 'P3373', 'per:siblings', 'org:alternate_names', 'per:spouse',
+                                       'per:alternate_names', 'per:other_family']:
+                continue
+            if cur_label not in new_label_dict:
+                new_label_dict[cur_label] = num_labels + len(new_label_dict)
+            augment_label = new_label_dict[cur_label]
+            input_ids = ins["input_ids"]
+            subj_st, subj_ed = input_ids.index(subj_st_id), input_ids.index(subj_ed_id)
+            obj_st, obj_ed = input_ids.index(obj_st_id), input_ids.index(obj_ed_id)
+            aug_input_ids = copy.deepcopy(input_ids)
+            aug_input_ids[subj_st] = obj_st_id
+            aug_input_ids[subj_ed] = obj_ed_id
+            aug_input_ids[obj_st] = subj_st_id
+            aug_input_ids[obj_ed] = subj_ed_id
+            new_ins = {
+                "input_ids": aug_input_ids,
+                "subject_marker_st": obj_st,
+                "object_marker_st": subj_st,
+                "labels": augment_label,
+            }
+            description_ids_list = {k: v for k, v in ins.items() if k.startswith('description_ids_')}
+            
+            for key, value in description_ids_list.items():
+                new_ins.update({
+                    key: value
+                })
+                
+            old_description_ids_list = {k: v for k, v in ins.items() if k.startswith('old_description_ids_')}
+            
+            for key, value in old_description_ids_list.items():
+                new_ins.update({
+                    key: value
+                })
+            
+            if "old_labels" in ins.keys():
+                new_ins.update({
+                    'old_labels': copy.deepcopy(ins["old_labels"])
+                })
+            
+            # if lenght_seen_labels != 0:
+            #     old_labels = seen_labels[count_negative_label%lenght_seen_labels]
+            #     ins.update({
+            #             'old_labels': label2id[old_labels]
+            #         })
+            #     old_pools = {}
+            #     if old_labels in descriptions.keys():
+            #         old_pools = descriptions[old_labels]
+                    
+            #     for idx, pool in enumerate(old_pools):
+            #         ins.update({
+            #             f'old_description_ids_{idx}': pool
+            #         })
+                # count_negative_label += 1
+                
+            augment_data[augment_label].append(new_ins)
+        for _, v in augment_data.items():
+            data.extend(v)
+        num_train_labels += len(new_label_dict)
+
+    if add_undetermined_relation:
+        # undetermined relation augmentation for origin_data and augment_data
+        for idx in range(len(data)):
+            ins = data[idx]
+            input_ids = copy.deepcopy(ins["input_ids"])
+            subj_st, subj_ed = input_ids.index(subj_st_id), input_ids.index(subj_ed_id)
+            obj_st, obj_ed = input_ids.index(obj_st_id), input_ids.index(obj_ed_id)
+            subj = input_ids[subj_st: subj_ed + 1]
+            obj = input_ids[obj_st: obj_ed + 1]
+            if subj_st < obj_st:
+                input_ids = subj + obj
+            else:
+                input_ids = obj + subj
+            subj_st, subj_ed = input_ids.index(subj_st_id), input_ids.index(subj_ed_id)
+            obj_st, obj_ed = input_ids.index(obj_st_id), input_ids.index(obj_ed_id)
+            new_ins = {
+                "input_ids": input_ids,
+                "subject_marker_st": obj_st,
+                "object_marker_st": subj_st,
+                "labels": num_train_labels
+            }
+            
+            description_ids_list = {k: v for k, v in ins.items() if k.startswith('description_ids_')}
+            
+            for key, value in description_ids_list.items():
+                new_ins.update({
+                    key: value
+                })
+                
+            old_description_ids_list = {k: v for k, v in ins.items() if k.startswith('old_description_ids_')}
+            
+            for key, value in old_description_ids_list.items():
+                new_ins.update({
+                    key: value
+                })
+            
+            if "old_labels" in ins.keys():
+                new_ins.update({
+                    'old_labels': copy.deepcopy(ins["old_labels"])
+                })
+            
+            # if lenght_seen_labels != 0:
+            #     old_labels = seen_labels[count_negative_label%lenght_seen_labels]
+            #     ins.update({
+            #             'old_labels': label2id[old_labels]
+            #         })
+            #     old_pools = {}
+            #     if old_labels in descriptions.keys():
+            #         old_pools = descriptions[old_labels]
+                    
+            #     for idx, pool in enumerate(old_pools):
+            #         ins.update({
+            #             f'old_description_ids_{idx}': pool
+            #         })
+                # count_negative_label += 1
+                
+            augment_data[augment_label].append(new_ins)
+        num_train_labels += 1
+
+    for idx in range(len(data)):
+        for del_key in ["sentence", "input_ids_without_marker", "subject_st", "subject_ed", "object_st", "object_ed"]:
+            if del_key in data[idx]:
+                del data[idx][del_key]
+
+    print(new_label_dict)
+    return data, num_train_labels
+
+
+
 def relation_data_augmentation_and_contrastive_learning(data, num_labels, id2label, marker_id=(35022, 35023, 35024, 35025), augment_type="all"):
     subj_st_id, subj_ed_id, obj_st_id, obj_ed_id = marker_id
     new_label_dict = dict()
