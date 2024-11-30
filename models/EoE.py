@@ -273,7 +273,7 @@ class EoE(nn.Module):
         self.un_expert_distribution["accumulate_cov"] += cov
         avg_cov = self.un_expert_distribution["accumulate_cov"].cuda() / length
         self.un_expert_distribution["accumulate_cov_shared"] = avg_cov
-        self.un_expert_distribution["cov_inv"] = torch.linalg.pinv(avg_cov, hermitian=True)
+        # self.un_expert_distribution["cov_inv"] = torch.linalg.pinv(avg_cov, hermitian=True)
         
     def new_statistic_instructed_representation(self, mean, cov, task_mean, task_cov, expert_id=0):
         expert_id = self.shift_expert_id(expert_id)
@@ -286,7 +286,7 @@ class EoE(nn.Module):
         self.in_expert_distribution["accumulate_cov"] += cov
         avg_cov = self.in_expert_distribution["accumulate_cov"].cuda() / length
         self.in_expert_distribution["accumulate_cov_shared"] = avg_cov
-        self.in_expert_distribution["cov_inv"] = torch.linalg.pinv(avg_cov, hermitian=True)
+        # self.in_expert_distribution["cov_inv"] = torch.linalg.pinv(avg_cov, hermitian=True)
         
     def shift_expert_id(self, expert_id):
         return expert_id + 1
