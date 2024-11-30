@@ -491,11 +491,11 @@ class EoE(nn.Module):
                     **kwargs
                 )
                 
-                stack_u_c = []
-                for label in offset_label:
-                    stack_u_c.append(self.description_matrix[label])
-                stack_u_c = torch.stack(stack_u_c)
-                stack_u_c = torch.tensor(stack_u_c, device=self.device)
+                # stack_u_c = []
+                # for label in offset_label:
+                #     stack_u_c.append(self.description_matrix[label])
+                # stack_u_c = torch.stack(stack_u_c)
+                # stack_u_c = torch.tensor(stack_u_c, device=self.device)
                 
                 # contrastive regularization Loss
                 # Compute numerator: exp(h · μ_c / τ)
@@ -538,11 +538,11 @@ class EoE(nn.Module):
                 # contrastive regularization Loss
                 # Compute numerator: exp(h · μ_c / τ)
                 
-                stack_u_c = []
-                for label in old_offset_label:
-                    stack_u_c.append(self.description_matrix[label])
-                stack_u_c = torch.stack(stack_u_c)
-                stack_u_c = torch.tensor(stack_u_c, device=self.device)
+                # stack_u_c = []
+                # for label in old_offset_label:
+                #     stack_u_c.append(self.description_matrix[label])
+                # stack_u_c = torch.stack(stack_u_c)
+                # stack_u_c = torch.tensor(stack_u_c, device=self.device)
                 
                 numerator_list = []
                 for idx, class_mean in enumerate(self.in_expert_distribution["class_mean"]):
