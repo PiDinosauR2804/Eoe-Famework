@@ -84,9 +84,9 @@ class EoETrainer(BaseTrainer):
             
             seen_labels += cur_labels
             
-            pool = model.get_description_ids(seen_labels)       
-            model.description_matrix = self.calculation_description_matrix(model, seen_labels, pool, model.number_description, default_data_collator)
-            print(model.description_matrix)
+            # pool = model.get_description_ids(seen_labels)       
+            # model.description_matrix = self.calculation_description_matrix(model, seen_labels, pool, model.number_description, default_data_collator)
+            # print(model.description_matrix)
             
             model.new_task(num_train_labels)
             # print("2")
