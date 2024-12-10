@@ -374,7 +374,13 @@ class EoE(nn.Module):
                 **kwargs
             )
 
-            logits = self.classifier_only_bert[-1](hidden_states)
+            if oracle:
+                task_idx = kwargs["task_idx"]
+                classifier_only_bert = self.classifier_only_bert[task_idx]
+            else:
+                classifier_only_bert = self.classifier_only_bert[-1]
+
+            logits = classifier_only_bert(hidden_states)
             # print("--------classifier_only_bert-----")
             # print(logits)
             pred = logits.argmax(dim=1)
@@ -402,7 +408,13 @@ class EoE(nn.Module):
                 **kwargs
             )
             
-            classifier = self.classifier[-1]
+            if oracle:
+                task_idx = kwargs["task_idx"]
+                classifier = self.classifier[task_idx]
+            else:
+                classifier = self.classifier[-1]
+                
+                
             logits = classifier(hidden_states_final)
             
             # Lấy dự đoán cuối cùng
@@ -566,7 +578,7 @@ class EoE(nn.Module):
                 # print(self.num_labels)
                 total_old_log_term += (log_term.mean() / self.num_old_labels)
             
-            # loss += self.weight_old_cr_wtp * (total_old_log_term / len(old_description_ids_list)).squeeze(0)
+            loss += self.weight_old_cr_wtp * (total_old_log_term / len(old_description_ids_list)).squeeze(0)
             # print("----Old CR Loss-------")
             # print((total_old_log_term / len(old_description_ids_list)).item())
                         
