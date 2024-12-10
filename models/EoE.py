@@ -79,7 +79,7 @@ class EoE(nn.Module):
         
         self.label_description = {}
         self.label_description_ids = {}
-        self.number_description = 1
+        self.number_description = 3
         self.description_matrix = None
         self.classifier = nn.ParameterList()
         self.classifier_only_bert = nn.ParameterList()
