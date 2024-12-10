@@ -92,8 +92,8 @@ class EoETrainer(BaseTrainer):
             # print("2")
             # print(tokenizer.vocab_size)
             if self.task_idx == 0:
-                # expert_model = f"./ckpt/{self.args.dataset_name}_{seed}_{self.args.augment_type}.pth"
-                expert_model = f"/content/drive/MyDrive/FewRel_2021_all.pth"
+                expert_model = f"./ckpt/{self.args.dataset_name}_{seed}_{self.args.augment_type}.pth"
+                # expert_model = f"/content/drive/MyDrive/FewRel_2021_all.pth"
                 model.load_expert_model(expert_model)
                 logger.info(f"load first task model from {expert_model}")
             else:
@@ -111,7 +111,7 @@ class EoETrainer(BaseTrainer):
             # print(model.un_expert_distribution['class_mean'])
             # print(model.un_expert_distribution['accumulate_cov_shared'])
             baseUnHidden = BaseHidden(model.num_labels, model.un_expert_distribution['class_mean'], model.un_expert_distribution['accumulate_cov_shared'])
-            un_hidden_data = baseUnHidden.generate_hidden_data()
+            un_hidden_data = baseUnHidden.generate_hidden_data(960)
             un_hidden_dataset = BaseDataset(un_hidden_data)  
                 
             self.train_mlp(
@@ -130,7 +130,7 @@ class EoETrainer(BaseTrainer):
             # print(model.un_expert_distribution['class_mean'])
             # print(model.un_expert_distribution['accumulate_cov_shared'])
             baseInHidden = BaseHidden(model.num_labels, model.in_expert_distribution['class_mean'], model.in_expert_distribution['accumulate_cov_shared'])
-            in_hidden_data = baseInHidden.generate_hidden_data()
+            in_hidden_data = baseInHidden.generate_hidden_data(960)
             in_hidden_dataset = BaseDataset(in_hidden_data)  
                 
             self.train_mlp(

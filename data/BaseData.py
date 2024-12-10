@@ -27,13 +27,13 @@ class BaseHidden:
             res.append(ins)
         return res
 
-    def generate_hidden_data(self):
+    def generate_hidden_data(self, num):
         res = []
         for idx in range(self.num_class):
             labels = idx
             mean = self.means[idx].cpu().numpy()
             cov = self.covariance.cpu().numpy()
-            samples = self.generate_data_base_on_means_and_cov(labels, mean, cov, 960)
+            samples = self.generate_data_base_on_means_and_cov(labels, mean, cov, num)
             res.extend(samples)
         return res
             

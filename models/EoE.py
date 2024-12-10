@@ -79,7 +79,7 @@ class EoE(nn.Module):
         
         self.label_description = {}
         self.label_description_ids = {}
-        self.number_description = 3
+        self.number_description = 1
         self.description_matrix = None
         self.classifier = nn.ParameterList()
         self.classifier_only_bert = nn.ParameterList()
@@ -566,7 +566,7 @@ class EoE(nn.Module):
                 # print(self.num_labels)
                 total_old_log_term += (log_term.mean() / self.num_old_labels)
             
-            loss += self.weight_old_cr_wtp * (total_old_log_term / len(old_description_ids_list)).squeeze(0)
+            # loss += self.weight_old_cr_wtp * (total_old_log_term / len(old_description_ids_list)).squeeze(0)
             # print("----Old CR Loss-------")
             # print((total_old_log_term / len(old_description_ids_list)).item())
                         
