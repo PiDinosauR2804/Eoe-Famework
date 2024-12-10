@@ -366,7 +366,7 @@ class EoE(nn.Module):
                     **kwargs
                 )
                 return hidden_states
-            
+            # infer
             hidden_states = self.feature_extractor(
                 input_ids=input_ids,
                 attention_mask=attention_mask,

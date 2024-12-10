@@ -54,8 +54,8 @@ class EoETrainer(BaseTrainer):
             train_data_old = data.filter(cur_labels, "train") 
             
             for cur_label in cur_labels:
-                model.take_generate_description_genai_from_file(cur_label, self.args.dataset_name, tokenizer)
-                # model.take_generate_description_MrLinh_from_file(cur_label, data.label2id[cur_label], self.args.dataset_name, tokenizer)
+                # model.take_generate_description_genai_from_file(cur_label, self.args.dataset_name, tokenizer)
+                model.take_generate_description_MrLinh_from_file(cur_label, data.label2id[cur_label], self.args.dataset_name, tokenizer)
                 
             pool = model.get_description_ids(cur_labels)
             old_pool = model.get_description_ids(seen_labels)
@@ -67,9 +67,9 @@ class EoETrainer(BaseTrainer):
             #     print(f"  {key}: {value}") 
             
             
-            aug_train_data, num_train_labels = relation_data_augmentation_and_add_old_descriptions(
-                    copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
-                )   
+            # aug_train_data, num_train_labels = relation_data_augmentation_and_add_old_descriptions(
+            #         copy.deepcopy(train_data), len(seen_labels), copy.deepcopy(data.id2label), marker_ids, self.args.augment_type
+            #     )   
             
             # sample = train_data[0]
             # print("Anchor Sample:")
@@ -78,8 +78,8 @@ class EoETrainer(BaseTrainer):
             
             num_train_labels = len(cur_labels)
 
-            # train_dataset = BaseDataset(train_data)
-            train_dataset = BaseDataset(aug_train_data)
+            train_dataset = BaseDataset(train_data)
+            # train_dataset = BaseDataset(aug_train_data)
             train_dataset_old = BaseDataset(train_data_old)     
             
             seen_labels += cur_labels
@@ -92,8 +92,8 @@ class EoETrainer(BaseTrainer):
             # print("2")
             # print(tokenizer.vocab_size)
             if self.task_idx == 0:
-                expert_model = f"./ckpt/{self.args.dataset_name}_{seed}_{self.args.augment_type}.pth"
-                # expert_model = f"/content/drive/MyDrive/FewRel_2021_all.pth"
+                # expert_model = f"./ckpt/{self.args.dataset_name}_{seed}_{self.args.augment_type}.pth"
+                expert_model = f"/content/drive/MyDrive/FewRel_2021_all.pth"
                 model.load_expert_model(expert_model)
                 logger.info(f"load first task model from {expert_model}")
             else:
