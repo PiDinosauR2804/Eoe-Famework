@@ -14,6 +14,9 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import set_seed
 import wandb_logger as loggerdb
+from torch.utils.data import random_split
+import math
+
 
 
 from data import BaseDataset, BaseTripletDataset, BaseHidden
@@ -101,6 +104,14 @@ class EoETrainer(BaseTrainer):
                     model=model,
                     train_dataset=train_dataset,
                     data_collator=default_data_collator
+                )
+            
+            for ti in range(self.self.task_idx):
+                self.train_old_prompt(
+                    model=model,
+                    train_dataset=train_dataset,
+                    data_collator=default_data_collator,
+                    task_idx=ti
                 )
                 
             self.statistic(model, train_dataset_old, default_data_collator)
@@ -251,6 +262,77 @@ class EoETrainer(BaseTrainer):
                 self.optimizer.zero_grad()
 
                 inputs = {k: v.to(self.args.device) for k, v in inputs.items()}
+                outputs = model(**inputs)
+                loss = outputs.loss
+                loss.backward()
+                nn.utils.clip_grad_norm_(model.parameters(), self.args.max_grad_norm)
+
+                self.optimizer.step()
+                
+                # self.optimizer.zero_grad()
+
+                # inputs['use_origin'] = True
+                # outputs = model(**inputs)
+                # loss = outputs.loss
+                # loss.backward()
+                # nn.utils.clip_grad_norm_(model.parameters(), self.args.max_grad_norm)
+
+                # self.optimizer.step()
+
+                progress_bar.update(1)
+                progress_bar.set_postfix({"Loss": loss.item()})
+
+        progress_bar.close()
+        
+    def train_old_prompt(self, model, train_dataset, data_collator, task_id):
+        subset_size = math.ceil(len(train_dataset) * 0.1)
+        remain_size = len(train_dataset) - subset_size
+
+        # Chia ngẫu nhiên tập dữ liệu thành 10% và 90%
+        train_subset, _ = random_split(train_dataset, [subset_size, remain_size])
+        train_dataloader = DataLoader(
+            train_subset,
+            batch_size=self.args.train_batch_size,
+            shuffle=True,
+            collate_fn=data_collator
+        )
+        len_dataloader = len(train_dataloader)
+        num_examples = len(train_dataset)
+        max_steps = len_dataloader * self.args.num_train_epochs
+
+        logger.info("***** Running training *****")
+        logger.info(f"  Num examples = {num_examples}")
+        logger.info(f"  Num Epochs = {self.args.num_train_epochs}")
+        logger.info(f"  Train batch size = {self.args.train_batch_size}")
+        logger.info(f"  Total optimization steps = {max_steps}")
+
+        no_decay = ["bias", "LayerNorm.weight"]
+        parameters = [
+            {'params': [p for n, p in model.named_parameters() if 'feature_extractor' in n and not any(nd in n for nd in no_decay)],
+             'lr': self.args.learning_rate, 'weight_decay': 1e-2},
+            {'params': [p for n, p in model.named_parameters() if 'feature_extractor' in n and any(nd in n for nd in no_decay)],
+             'lr': self.args.learning_rate, 'weight_decay': 0.0},
+            {'params': [p for n, p in model.named_parameters() if 'feature_extractor' not in n and not any(nd in n for nd in no_decay)],
+             'lr': self.args.classifier_learning_rate, 'weight_decay': 1e-2},
+            {'params': [p for n, p in model.named_parameters() if 'feature_extractor' not in n and any(nd in n for nd in no_decay)],
+             'lr': self.args.classifier_learning_rate, 'weight_decay': 0.0},
+        ]
+        self.optimizer = AdamW(parameters)
+
+        progress_bar = tqdm(range(max_steps))
+        for name, param in model.named_parameters():
+            if param.requires_grad and "lora_" in name:
+                print(name)
+                break
+
+        for epoch in range(self.args.num_train_epochs):
+            model.train()
+            for step, inputs in enumerate(train_dataloader):
+                self.optimizer.zero_grad()
+
+                inputs = {k: v.to(self.args.device) for k, v in inputs.items()}
+                inputs.update({"old_prompt": True})
+                inputs.update({"task_idx": task_id})
                 outputs = model(**inputs)
                 loss = outputs.loss
                 loss.backward()
