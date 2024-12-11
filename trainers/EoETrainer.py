@@ -106,7 +106,13 @@ class EoETrainer(BaseTrainer):
                     data_collator=default_data_collator
                 )
             
-            for ti in range(self.task_idx-1):
+            model.feature_extractor.save_and_load_all_adapters(
+                self.task_idx,
+                save_dir=f"./ckpt/{self.args.dataset_name}-{seed}-{self.args.augment_type}",
+                save=True,
+            )
+            
+            for ti in range(self.task_idx):
                 self.train_old_prompt(
                     model=model,
                     train_dataset=train_dataset,
@@ -284,7 +290,7 @@ class EoETrainer(BaseTrainer):
 
         progress_bar.close()
         
-    def train_old_prompt(self, model, train_dataset, data_collator, task_id):
+    def train_old_prompt(self, model, train_dataset, data_collator, task_idx):
         subset_size = math.ceil(len(train_dataset) * 0.1)
         remain_size = len(train_dataset) - subset_size
 
@@ -332,7 +338,7 @@ class EoETrainer(BaseTrainer):
 
                 inputs = {k: v.to(self.args.device) for k, v in inputs.items()}
                 inputs.update({"old_prompt": True})
-                inputs.update({"task_idx": task_id})
+                inputs.update({"task_idx": task_idx})
                 outputs = model(**inputs)
                 loss = outputs.loss
                 loss.backward()
