@@ -583,15 +583,21 @@ class EoE(nn.Module):
                 total_old_log_term += (log_term.mean() / self.num_old_labels)
             
             loss += self.weight_old_cr_wtp * (total_old_log_term / len(old_description_ids_list)).squeeze(0)
-            print("----Old CR Loss-------")
-            print((total_old_log_term / len(old_description_ids_list)).item())
+            # print("----Old CR Loss-------")
+            # print((total_old_log_term / len(old_description_ids_list)).item())
                         
         # print("-------------Final---------")
         # print(loss)
-        # loggerdb.log_metrics({f"train/old_cr_loss_{self.num_tasks}": (total_old_log_term / len(old_description_ids_list)).item()})
-        # loggerdb.log_metrics({f"train/cr_loss_{self.num_tasks}": (total_log_term / len(description_ids_list)).item()})
-        loggerdb.log_metrics({f"train/total_loss_{self.num_tasks}": loss.item()})
-            
+        if "old_prompt" in kwargs and kwargs["old_prompt"]:
+            task_idx = kwargs["task_idx"]
+            loggerdb.log_metrics({f"train/old_cr_loss_oldLora_{task_idx}_{self.num_tasks}": (total_old_log_term / len(old_description_ids_list)).item()})
+            loggerdb.log_metrics({f"train/cr_loss_oldLora_{task_idx}_{self.num_tasks}": (total_log_term / len(description_ids_list)).item()})
+            loggerdb.log_metrics({f"train/total_loss_oldLora_{task_idx}_{self.num_tasks}": loss.item()})
+        else:
+            loggerdb.log_metrics({f"train/old_cr_loss_{self.num_tasks}": (total_old_log_term / len(old_description_ids_list)).item()})
+            loggerdb.log_metrics({f"train/cr_loss_{self.num_tasks}": (total_log_term / len(description_ids_list)).item()})
+            loggerdb.log_metrics({f"train/total_loss_{self.num_tasks}": loss.item()})
+                
         # logger.log_metrics({"train/loss": loss})
 
         preds = logits.max(dim=-1)[1]
