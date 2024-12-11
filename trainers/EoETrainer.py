@@ -106,7 +106,7 @@ class EoETrainer(BaseTrainer):
                     data_collator=default_data_collator
                 )
             
-            for ti in range(self.self.task_idx):
+            for ti in range(self.task_idx-1):
                 self.train_old_prompt(
                     model=model,
                     train_dataset=train_dataset,
